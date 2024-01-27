@@ -38,10 +38,12 @@ This skeleton implementation keeps a duplicate state from the game,
 it gets updated with each event and then calls the scheduler function
 to generate events back to the game
 """
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import List
+from collections import OrderedDict
 
 #
-# A copy of the game's state
+# A copy of the game's statea
 #
 
 @dataclass
@@ -80,7 +82,9 @@ class IoQueue:
     io_count: int = 0
 
 
-class RunOs:
+
+
+class SchedulerBase:
     """Object oriented skeleton for automation script
 
     this implements a `__call__` method that should be exposed
@@ -95,7 +99,18 @@ class RunOs:
 
     # map of processes
     processes: dict[int,Process] = {}
+    # 
 
+    active_processes: {}
+    inactive_processes: {}
+
+    starvation = OrderedDict({5:[], 4:[], 3:[], 2:[], 1:[], 0:[]})
+
+    terminated_processes = []
+
+    cpu_owners = set()
+    inactive_processes: dict[int,Process] = {}
+    
     # map of pages
     pages: dict[tuple[int,int],Page] = {}
 
@@ -104,6 +119,11 @@ class RunOs:
 
     # number of IO events ready
     io_queue = IoQueue()
+
+    init = False
+
+
+    cpu_count = 4
 
     _event_queue = []
 
@@ -224,6 +244,7 @@ class RunOs:
             .pid: id of the process
         """
         self.processes[event.pid] = Process(event.pid)
+        self.starvation[0].append(event.pid)
 
     def _update_PROC_CPU(self, event):
         """A process was moved into or out of a CPU
@@ -252,7 +273,11 @@ class RunOs:
             .pid: id of the process
             .starvation_level: the new starvation level
         """
+
+        #update starvation data_structure
         self.processes[event.pid].starvation_level = event.starvation_level
+        self.remove_process_from_starvation_list(event.pid)
+        self.starvation[event.starvation_level].append(event.pid)
 
     def _update_PROC_WAIT_IO(self, event):
         """A process wait (IO) status has changed
@@ -290,6 +315,8 @@ class RunOs:
             .pid: id of the process
         """
         self.processes[event.pid].has_ended = True
+        self.terminated_processes.append(event.pid)
+        self.remove_process_from_starvation_list(event.pid)
 
     def _update_PROC_KILL(self, event):
         """A process was killed by the user
@@ -320,23 +347,27 @@ class RunOs:
         for page in proc.pages:
             del self.pages[page.key]
 
-    #
-    # implement functions
-    #
+                
+    def swap_process(self, pid_active, pid_inactive):
+        self.release_process_from_cpu(pid_active)
+        self.move_process_to_cpu(pid_inactive)
 
+    def move_process_to_cpu(self,pid):
+        self.cpu_owners.add(pid)
+        self.move_process(pid)
+
+    def relase_process_from_cpu(self,pid):
+        self.cpu_owners.remove(pid)
+        self.move_process(pid)
+        
+    def remove_process_from_starvation_list(self,pid):
+        for starvation_level in self.starvation.keys():
+            if pid in self.starvation[starvation_level]:
+                self.starvation[starvation_level].remove(pid)
+        
+        
     def schedule(self):
-        """Read current status and update the game"""
+        pass
 
 
-#
-# the main entrypoint to run the scheduler
-#
-# it expects a callable `run_os`
-#
-# it receives a list of events generated from processes/pages
-# see `src/lib/event_manager` for generated events
-#
-# it should return a list of events to happen
-#
 
-run_os = RunOs()

@@ -28,6 +28,11 @@ class Process(GameObject):
         self._is_waiting_for_page = False
         self._has_ended = False
         self._starvation_level = 1
+        
+        
+        ##Verbleibende Zeit bis zum Wechsel des Starvation-Levels
+        self._remaining_starvation_time = 0;
+        ###
 
         self._last_update_time = game.current_time
         self._last_event_check_time = self._last_update_time
@@ -229,10 +234,26 @@ class Process(GameObject):
         self._set_waiting_for_page(pages_in_swap > 0)
 
     def _update_starvation_level(self, current_time):
+        
+        
+        ###
+        self._remaining_starvation_time = _STARVATION_LEVEL_DURATION_MS - (current_time - self._last_starvation_level_change_time)
+        ###
+        
         if self.has_cpu and not self.is_blocked:
+            
+            ## Wieviel Zeit ist noch erforderlich bis der Prozess wieder Starvation-Level 0 erreicht
+            self._remaining_starvation_time = _TIME_TO_UNSTARVE_MS - (current_time - self._last_state_change_time)
+            ###
+            
             if current_time - self._last_state_change_time >= _TIME_TO_UNSTARVE_MS:
                 self._last_starvation_level_change_time = current_time
                 self._starvation_level = 0
+                
+                ### modification: Prozess hat Starvation-Level 0 erreicht 
+                self._remaining_starvation_time = _STARVATION_LEVEL_DURATION_MS;                    
+                ###
+                
                 event_manager.event_process_starvation(self._pid, self._starvation_level)
         elif (
             current_time >=
@@ -240,7 +261,14 @@ class Process(GameObject):
         ):
             self._last_starvation_level_change_time = current_time
             if self._starvation_level < LAST_ALIVE_STARVATION_LEVEL:
+                
+                
                 self._starvation_level += 1
+                
+                ### modification: Prozess hat neues Starvation-Level erreicht 
+                self._remaining_starvation_time = _STARVATION_LEVEL_DURATION_MS;                    
+                ###
+                
                 event_manager.event_process_starvation(
                     self._pid, self._starvation_level)
             else:
