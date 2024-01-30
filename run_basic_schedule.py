@@ -4,9 +4,10 @@ from lib import scheduler_extended
 
 class RunBasicSchedule(scheduler_extended.SchedulderExtended):
 
+    
     def update_cpu_schedule(self):
     
-        #Überprüfe ob es mehr slots als wartende Prozesse gibt
+        #check if more slots than processes are available
         if len(self.processes) <= self.cpu_count:
             for process in self.processes.keys():
                 if process not in self.cpu_owners:
@@ -17,21 +18,45 @@ class RunBasicSchedule(scheduler_extended.SchedulderExtended):
             for starvation_level, process_list in self.starvation.items():
                 sched_order = sched_order + process_list
 
+            ##remove processes that are waiting for io-events
+            new_sched_order = sched_order.copy()
+            for process in sched_order:
+                if self.is_process_waiting_for_io(process):
+                    new_sched_order.remove(process)
+                    
+            ##trim sched_order to available cpu slots
+            del new_sched_order[self.cpu_count:] 
+            
+            ##create list of needed pages in ram
+            new_pages_in_ram = set()
+            for entry in new_sched_order:
+                process = self.processes.get(entry)
+                for page in process.pages:
+                    if (page.key in self.pages_used):
+                        new_pages_in_ram.add(page.key)
+                        
+            ##update ram schedule
+            pages_to_swap = self.pages_ram.difference(new_pages_in_ram)
+            for page in pages_to_swap:
+                self.move_page_to_swap(page)
+            
+            pages_to_ram = new_pages_in_ram.difference(self.pages_ram)
+            for page in pages_to_ram:
+                self.move_page_to_ram(page)
+
             #Create set with n entries
             new_cpu_owners = set()
-            new_cpu_owners.update(sched_order[:self.cpu_count])
+            new_cpu_owners.update(new_sched_order)
         
+            #find processes that need to be removed
+            processes_to_release = self.cpu_owners.difference(new_cpu_owners)
 
+            for process in processes_to_release:
+                self.release_process_from_cpu(process)
 
-            #Entferne Prozesse von CPU, die nicht mehr die erforderliche Priorität haben
-            to_remove = self.cpu_owners.difference(new_cpu_owners)
-            
-            for process in to_remove:
-                self.relase_process_from_cpu(process)
-
-            #Weise neue Prozesse freien CPUs zu
-            to_add = new_cpu_owners.difference(self.cpu_owners) 
-            for process in to_add:
+            #update cpu ownership 
+            processes_to_add = new_cpu_owners.difference(self.cpu_owners) 
+            for process in processes_to_add:
                 self.move_process_to_cpu(process)
 
     def schedule(self):

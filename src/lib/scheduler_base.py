@@ -85,46 +85,38 @@ class IoQueue:
 
 
 class SchedulerBase:
-    """Object oriented skeleton for automation script
 
-    this implements a `__call__` method that should be exposed
-    to the game. This method then routes the events to the handlers.
-
-    The handlers should be in the form of `handle_<EVENT_TYPE>`
-    (it's similar to http.server.BaseHTTPRequestHandler).
-
-    The helper functions `move_*` and `do_io` will append events
-    to the list that shall be sent back to the game.
-    """
 
     # map of processes
     processes: dict[int,Process] = {}
     # 
-
-    active_processes: {}
-    inactive_processes: {}
 
     starvation = OrderedDict({5:[], 4:[], 3:[], 2:[], 1:[], 0:[]})
 
     terminated_processes = []
 
     cpu_owners = set()
-    inactive_processes: dict[int,Process] = {}
     
+    
+
     # map of pages
     pages: dict[tuple[int,int],Page] = {}
+    
+    #pages in use
+    pages_used = set()
 
+    #pages in ram
+    pages_ram = set()
+    
+    #pages in swap
+    pages_swap = set()
+    
     # number of CPUs being used
     used_cpus = 0
 
     # number of IO events ready
     io_queue = IoQueue()
-
-    init = False
-
-
     cpu_count = 4
-
     _event_queue = []
 
     def move_page(self, pid, idx):
@@ -205,7 +197,14 @@ class SchedulerBase:
             .idx: index of page in process
             .use: bool, if page is in use
         """
-        self.pages[(event.pid, event.idx)].use = event.use
+        key = (event.pid, event.idx)
+    
+        if key in self.pages_used:
+            self.pages_used.remove(key)
+        else:
+            self.pages_used.add(key)
+        
+        self.pages[key].use = event.use
 
     def _update_PAGE_SWAP(self, event):
         """A page was swapped
@@ -217,6 +216,17 @@ class SchedulerBase:
             .idx: index of page in process
             .swap: bool, where it is now
         """
+        page = (event.pid, event.idx)
+        
+        if event.swap:
+            self.pages_swap.add(page)
+            if page in self.pages_ram:
+                self.pages_ram.remove(page)
+        else:
+            self.pages_ram.add(page)
+            if page in self.pages_swap:
+                  self.pages_swap.remove(page)
+        
         self.pages[(event.pid, event.idx)].swap = event.swap
 
     def _update_PAGE_FREE(self, event):
@@ -228,7 +238,20 @@ class SchedulerBase:
             .pid: id of the owner process
             .idx: index of page in process
         """
-        page = self.pages.pop((event.pid, event.idx))
+        
+        key = (event.pid, event.idx)
+        """
+        ##delete pages from lists
+        if event.swap:
+            self.pages_swap.remove(key)
+        else:
+            self.pages_ram.remove(key)
+            
+        if key in self.pages_used:
+            self.pages_used.remove(key)
+
+        """
+        page = self.pages.pop(key)
         try:
             self.processes[event.pid].pages.remove(page)
         except ValueError:
@@ -289,7 +312,9 @@ class SchedulerBase:
             .pid: id of the process
             .waiting_for_io: bool, the new waiting status
         """
-        self.processes[event.pid].waiting_for_io = event.waiting_for_io
+        ##needed for terminated processes!?
+        if event.pid in self.processes:
+            self.processes[event.pid].waiting_for_io = event.waiting_for_io
 
     def _update_PROC_WAIT_PAGE(self, event):
         """A process wait (for PAGE) status has changed
@@ -317,6 +342,7 @@ class SchedulerBase:
         self.processes[event.pid].has_ended = True
         self.terminated_processes.append(event.pid)
         self.remove_process_from_starvation_list(event.pid)
+        
 
     def _update_PROC_KILL(self, event):
         """A process was killed by the user
@@ -328,10 +354,18 @@ class SchedulerBase:
         event:
             .pid: id of the process
         """
+        proc = self.processes.get(event.pid)
         del self.processes[event.pid]
+        self.used_cpus -= 1
         # shouldn't need this as pages are freed before the process is killed
         for page in proc.pages:
             del self.pages[page.key]
+            if page.key in self.pages_ram:
+                self.pages_ram.remove(page.key)
+            if page.key in self.pages_swap:
+                self.pages_swap.remove(page.key)
+            if page.key in self.pages_used:
+                self.pages_used.remove(page.key)
 
     def _update_PROC_END(self, event):
         """A process was terminated and was gracefully ended
@@ -346,9 +380,16 @@ class SchedulerBase:
         # shouldn't need this as pages are freed before the process is removed
         for page in proc.pages:
             del self.pages[page.key]
+            if page.key in self.pages_ram:
+                self.pages_ram.remove(page.key)
+            if page.key in self.pages_swap:
+                self.pages_swap.remove(page.key)
+            if page.key in self.pages_used:
+                self.pages_used.remove(page.key)
+
 
                 
-    def swap_process(self, pid_active, pid_inactive):
+    def exchange_processes(self, pid_inactive, pid_active):
         self.release_process_from_cpu(pid_active)
         self.move_process_to_cpu(pid_inactive)
 
@@ -356,16 +397,32 @@ class SchedulerBase:
         self.cpu_owners.add(pid)
         self.move_process(pid)
 
-    def relase_process_from_cpu(self,pid):
+    def release_process_from_cpu(self,pid):
         self.cpu_owners.remove(pid)
         self.move_process(pid)
+        
+        
+    def exchange_pages(self,page_swap, page_ram):
+        self.move_page_to_swap(page_ram)
+        self.move_page_to_ram(page_swap)
+    
+    def move_page_to_ram(self,page):
+        self.pages_ram.add(page)
+        if page in self.pages_swap:
+            self.pages_swap.remove(page)
+        self.move_page(page[0],page[1])
+    
+    def move_page_to_swap(self,page):
+        self.pages_swap.add(page)
+        self.pages_ram.remove(page)
+        self.move_page(page[0],page[1])
+        
         
     def remove_process_from_starvation_list(self,pid):
         for starvation_level in self.starvation.keys():
             if pid in self.starvation[starvation_level]:
                 self.starvation[starvation_level].remove(pid)
-        
-        
+             
     def schedule(self):
         pass
 
