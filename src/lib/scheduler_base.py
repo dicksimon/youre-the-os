@@ -116,7 +116,11 @@ class SchedulerBase:
 
     # number of IO events ready
     io_queue = IoQueue()
-    cpu_count = 4
+    
+    settings = globals();
+    cpu_count = 16
+    ram_count = 16 * 4;
+
     _event_queue = []
 
     def move_page(self, pid, idx):
@@ -199,10 +203,12 @@ class SchedulerBase:
         """
         key = (event.pid, event.idx)
     
-        if key in self.pages_used:
-            self.pages_used.remove(key)
+        if event.use:
+            if key not in self.pages_used:
+                self.pages_used.add(key)
         else:
-            self.pages_used.add(key)
+            if key in self.pages_used:
+                self.pages_used.remove(key)
         
         self.pages[key].use = event.use
 

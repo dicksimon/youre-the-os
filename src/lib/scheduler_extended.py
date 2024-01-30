@@ -3,7 +3,6 @@ from lib import scheduler_base
 
 class SchedulderExtended(scheduler_base.SchedulerBase):
     
-    
     def cleanup_processes(self):
         for process in self.terminated_processes:
             self.release_process_from_cpu(process)    
