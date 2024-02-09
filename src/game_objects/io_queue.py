@@ -80,6 +80,7 @@ class IoQueue(GameObject):
         ):
             self._last_update_time = current_time
             self._event_count += 1
+            event_manager.event_io_queue(self._event_count)
 
         elif current_time >= self._last_update_time + ONE_SECOND:
             self._last_update_time = current_time
