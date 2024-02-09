@@ -26,8 +26,7 @@ class RunBasicSchedule(scheduler_extended.SchedulderExtended):
             ##trim sched_order to available cpu slots
             sched_order = sched_order[:self.cpu_count] 
             
-            
-            
+        
             pages_order = list()
             ##create list of needed pages in ram
           
@@ -49,7 +48,7 @@ class RunBasicSchedule(scheduler_extended.SchedulderExtended):
             for page in pages_to_ram:
                 self.move_page_to_ram(page)
 
-            #Create set with n entries
+            #calculate instruction set
             new_cpu_owners = set()
             new_cpu_owners.update(sched_order)
         
@@ -66,9 +65,10 @@ class RunBasicSchedule(scheduler_extended.SchedulderExtended):
 
     def schedule(self):
 
-        self.cleanup_processes()
-        self.update_cpu_schedule()
+        #self.cleanup_processes()
         self.clean_io_queue()
+        self.update_cpu_schedule()
+
 
 #
 # the main entrypoint to run the scheduler

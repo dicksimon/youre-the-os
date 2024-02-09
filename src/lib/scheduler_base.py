@@ -86,21 +86,26 @@ class IoQueue:
 
 class SchedulerBase:
 
+    ###data structures
 
     # map of processes
     processes: dict[int,Process] = {}
-    # 
+    # map of pages
+    pages: dict[tuple[int,int],Page] = {}
+    # number of IO events ready
+    io_queue = IoQueue()
+     
 
+    #processes sorted
     starvation = OrderedDict({5:[], 4:[], 3:[], 2:[], 1:[], 0:[]})
 
     terminated_processes = []
 
     cpu_owners = set()
     
-    
+    # number of CPUs being used
+    used_cpus = 0
 
-    # map of pages
-    pages: dict[tuple[int,int],Page] = {}
     
     #pages in use
     pages_used = set()
@@ -111,18 +116,22 @@ class SchedulerBase:
     #pages in swap
     pages_swap = set()
     
-    # number of CPUs being used
-    used_cpus = 0
-
-    # number of IO events ready
-    io_queue = IoQueue()
-    
+    ##toDo include global settings
     settings = globals();
     cpu_count = 16
     ram_count = 16 * 4;
 
+
+    #event queue returned to the game
     _event_queue = []
 
+    def remove_process_from_starvation_list(self,pid):
+        for starvation_level in self.starvation.keys():
+            if pid in self.starvation[starvation_level]:
+                self.starvation[starvation_level].remove(pid)
+
+
+    #base operations
     def move_page(self, pid, idx):
         """create a move page event"""
         self._event_queue.append({
@@ -144,23 +153,37 @@ class SchedulerBase:
             'type': 'io_queue'
         })
 
-    def __call__(self, events: list):
-        """Entrypoint from game
+    # scheduler base instruction set
+    def exchange_processes(self, pid_inactive, pid_active):
+        self.release_process_from_cpu(pid_active)
+        self.move_process_to_cpu(pid_inactive)
 
-        will dispatch each event to the respective handler,
-        collecting action events to send back to the game,
-        if a handler doesn't exist, will ignore that event.
-        """
-        self._event_queue.clear()
-        # update the status of process/memory
-        for event in events:
-            handler = getattr(self, f"_update_{event.etype}", None)
-            if handler is not None:
-                handler(event)
-        # run the scheduler
-        self.schedule()
-        return self._event_queue
+    def move_process_to_cpu(self,pid):
+        self.cpu_owners.add(pid)
+        self.move_process(pid)
 
+    def release_process_from_cpu(self,pid):
+        self.cpu_owners.remove(pid)
+        self.move_process(pid)
+         
+    def exchange_pages(self,page_swap, page_ram):
+        self.move_page_to_swap(page_ram)
+        self.move_page_to_ram(page_swap)
+    
+    def move_page_to_ram(self,page):
+        self.pages_ram.add(page)
+        if page in self.pages_swap:
+            self.pages_swap.remove(page)
+        self.move_page(page[0],page[1])
+    
+    def move_page_to_swap(self,page):
+        self.pages_swap.add(page)
+        if page in self.pages_ram:
+            self.pages_ram.remove(page)
+        self.move_page(page[0],page[1])
+
+
+    # handling of incoming events and data structures
     def _update_IO_QUEUE(self, event):
         """IO Queue has new count
 
@@ -183,9 +206,19 @@ class SchedulerBase:
             .swap: bool, if page is in swap
             .use: bool, if page is in use
         """
+        key = (event.pid, event.idx);
         page = Page(event.pid, event.idx, event.swap, event.use)
-        self.pages[(event.pid, event.idx)] = page
+        self.pages[key] = page
         self.processes[event.pid].pages.append(page)
+
+        if event.swap:
+            self.pages_swap.add(key)
+        else:
+            self.pages_ram.add(key)
+
+        if event.use:
+            self.pages_used.add(key)
+
         self.on_PAGE_NEW(page)
 
     def _update_PAGE_USE(self, event):
@@ -250,22 +283,20 @@ class SchedulerBase:
         """
         
         key = (event.pid, event.idx)
-        """
-        ##delete pages from lists
-        if event.swap:
-            self.pages_swap.remove(key)
-        else:
+        ##remove page from other datastructures
+        if key in self.pages_ram:
             self.pages_ram.remove(key)
-            
+        if key in self.pages_swap:
+            self.pages_swap.remove(key)
         if key in self.pages_used:
             self.pages_used.remove(key)
 
-        """
         page = self.pages.pop(key)
         try:
             self.processes[event.pid].pages.remove(page)
         except ValueError:
             pass
+
         self.on_PAGE_FREE(page)
 
     def _update_PROC_NEW(self, event):
@@ -358,6 +389,17 @@ class SchedulerBase:
         self.processes[event.pid].has_ended = True
         self.terminated_processes.append(event.pid)
         self.remove_process_from_starvation_list(event.pid)
+
+        """
+        proc = self.processes.get(event.pid)
+        for page in proc.pages:
+            if page.key in self.pages_ram:
+                self.pages_ram.remove(page.key)
+            if page.key in self.pages_swap:
+                self.pages_swap.remove(page.key)
+            if page.key in self.pages_used:
+                self.pages_used.remove(page.key)
+        """
         self.on_PROC_TERM(event.pid)
         
     def _update_PROC_KILL(self, event):
@@ -374,7 +416,9 @@ class SchedulerBase:
         del self.processes[event.pid]
         self.remove_process_from_starvation_list(event.pid);
         self.used_cpus -= 1
+
         # shouldn't need this as pages are freed before the process is killed
+        """
         for page in proc.pages:
             del self.pages[page.key]
             if page.key in self.pages_ram:
@@ -383,6 +427,7 @@ class SchedulerBase:
                 self.pages_swap.remove(page.key)
             if page.key in self.pages_used:
                 self.pages_used.remove(page.key)
+        """
         self.on_PROC_KILL(event.pid)
 
     def _update_PROC_END(self, event):
@@ -395,7 +440,10 @@ class SchedulerBase:
         """
         proc = self.processes.pop(event.pid)
         self.used_cpus -= 1
+
+
         # shouldn't need this as pages are freed before the process is removed
+        """
         for page in proc.pages:
             del self.pages[page.key]
             if page.key in self.pages_ram:
@@ -404,45 +452,11 @@ class SchedulerBase:
                 self.pages_swap.remove(page.key)
             if page.key in self.pages_used:
                 self.pages_used.remove(page.key)
-
+        """
         self.on_PROC_END(event.pid)
    
-    def exchange_processes(self, pid_inactive, pid_active):
-        self.release_process_from_cpu(pid_active)
-        self.move_process_to_cpu(pid_inactive)
 
-    def move_process_to_cpu(self,pid):
-        self.cpu_owners.add(pid)
-        self.move_process(pid)
-
-    def release_process_from_cpu(self,pid):
-        self.cpu_owners.remove(pid)
-        self.move_process(pid)
-         
-    def exchange_pages(self,page_swap, page_ram):
-        self.move_page_to_swap(page_ram)
-        self.move_page_to_ram(page_swap)
-    
-    def move_page_to_ram(self,page):
-        self.pages_ram.add(page)
-        if page in self.pages_swap:
-            self.pages_swap.remove(page)
-        self.move_page(page[0],page[1])
-    
-    def move_page_to_swap(self,page):
-        self.pages_swap.add(page)
-        self.pages_ram.remove(page)
-        self.move_page(page[0],page[1])
-  
-    def remove_process_from_starvation_list(self,pid):
-        for starvation_level in self.starvation.keys():
-            if pid in self.starvation[starvation_level]:
-                self.starvation[starvation_level].remove(pid)
-             
-    def schedule(self):
-        pass
-
-
+   # hook functions for schedulding algorithms
     def on_IO_QUEUE(self, io_count):
         pass
     def on_PAGE_NEW(self, page):
@@ -464,11 +478,34 @@ class SchedulerBase:
     def on_PROC_WAIT_PAGE(self, pid, waiting_for_page):
         pass
 
-    def on_PROC_KILL(self):
+    def on_PROC_KILL(self, pid):
         pass
 
-    def on_PROC_END(self):
+    def on_PROC_END(self, pid):
         pass
 
-    def on_PROC_TERM(self):
+    def on_PROC_TERM(self, pid):
+        pass
+
+
+    # entrypoint
+    def __call__(self, events: list):
+        """Entrypoint from game
+
+        will dispatch each event to the respective handler,
+        collecting action events to send back to the game,
+        if a handler doesn't exist, will ignore that event.
+        """
+        self._event_queue.clear()
+        # update the status of process/memory
+        for event in events:
+            handler = getattr(self, f"_update_{event.etype}", None)
+            if handler is not None:
+                handler(event)
+        # run the scheduler
+        self.schedule()
+        return self._event_queue
+
+  
+    def schedule(self):
         pass
