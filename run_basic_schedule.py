@@ -19,7 +19,6 @@ class RunBasicSchedule(scheduler_extended.SchedulderExtended):
                 sched_order = sched_order + process_list
 
             ##remove processes that are waiting for io-events
-  
             for process in sched_order:
                 if self.is_process_waiting_for_io(process):
                     sched_order.remove(process)
@@ -66,9 +65,10 @@ class RunBasicSchedule(scheduler_extended.SchedulderExtended):
                 self.move_process_to_cpu(process)
 
     def schedule(self):
-        self.clean_io_queue()
+
         self.cleanup_processes()
         self.update_cpu_schedule()
+        self.clean_io_queue()
 
 #
 # the main entrypoint to run the scheduler
