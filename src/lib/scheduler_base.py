@@ -170,6 +170,7 @@ class SchedulerBase:
             .io_count: number of IO waiting to be dispatched
         """
         self.io_queue.io_count = event.io_count
+        self.on_IO_QUEUE(event.io_count)
 
     def _update_PAGE_NEW(self, event):
         """A new memory page was created
@@ -185,6 +186,7 @@ class SchedulerBase:
         page = Page(event.pid, event.idx, event.swap, event.use)
         self.pages[(event.pid, event.idx)] = page
         self.processes[event.pid].pages.append(page)
+        self.on_PAGE_NEW(page)
 
     def _update_PAGE_USE(self, event):
         """A page 'use' flag has changed
@@ -201,16 +203,17 @@ class SchedulerBase:
             .idx: index of page in process
             .use: bool, if page is in use
         """
-        key = (event.pid, event.idx)
+        page = (event.pid, event.idx)
     
         if event.use:
-            if key not in self.pages_used:
-                self.pages_used.add(key)
+            if page not in self.pages_used:
+                self.pages_used.add(page)
         else:
-            if key in self.pages_used:
-                self.pages_used.remove(key)
+            if page in self.pages_used:
+                self.pages_used.remove(page)
         
-        self.pages[key].use = event.use
+        self.pages[page].use = event.use
+        self.on_PAGE_USE(page,event.use)
 
     def _update_PAGE_SWAP(self, event):
         """A page was swapped
@@ -234,6 +237,7 @@ class SchedulerBase:
                   self.pages_swap.remove(page)
         
         self.pages[(event.pid, event.idx)].swap = event.swap
+        self.on_PAGE_SWAP(page, event.swap);
 
     def _update_PAGE_FREE(self, event):
         """A page is freed
@@ -262,6 +266,7 @@ class SchedulerBase:
             self.processes[event.pid].pages.remove(page)
         except ValueError:
             pass
+        self.on_PAGE_FREE(page)
 
     def _update_PROC_NEW(self, event):
         """A new process is created
@@ -274,6 +279,7 @@ class SchedulerBase:
         """
         self.processes[event.pid] = Process(event.pid)
         self.starvation[0].append(event.pid)
+        self.on_PROC_NEW(event.pid)
 
     def _update_PROC_CPU(self, event):
         """A process was moved into or out of a CPU
@@ -290,6 +296,7 @@ class SchedulerBase:
             self.used_cpus += 1
         else:
             self.used_cpus -= 1
+        self.on_PROC_CPU(event.pid,event.cpu)
 
     def _update_PROC_STARV(self, event):
         """A process' starvation level has changed
@@ -307,6 +314,7 @@ class SchedulerBase:
         self.processes[event.pid].starvation_level = event.starvation_level
         self.remove_process_from_starvation_list(event.pid)
         self.starvation[event.starvation_level].append(event.pid)
+        self.on_PROC_STARV(event.pid, event.starvation_level)
 
     def _update_PROC_WAIT_IO(self, event):
         """A process wait (IO) status has changed
@@ -321,6 +329,7 @@ class SchedulerBase:
         ##needed for terminated processes!?
         if event.pid in self.processes:
             self.processes[event.pid].waiting_for_io = event.waiting_for_io
+        self.on_PROC_WAIT_IO(event.pid, event.waiting_for_io)
 
     def _update_PROC_WAIT_PAGE(self, event):
         """A process wait (for PAGE) status has changed
@@ -334,6 +343,7 @@ class SchedulerBase:
             .waiting_for_page: bool, the new waiting status
         """
         self.processes[event.pid].waiting_for_page = event.waiting_for_page
+        self.on_PROC_WAIT_PAGE(event.pid, event.waiting_for_page)
 
     def _update_PROC_TERM(self, event):
         """A process was succesfully terminated
@@ -348,8 +358,8 @@ class SchedulerBase:
         self.processes[event.pid].has_ended = True
         self.terminated_processes.append(event.pid)
         self.remove_process_from_starvation_list(event.pid)
+        self.on_PROC_TERM(event.pid)
         
-
     def _update_PROC_KILL(self, event):
         """A process was killed by the user
 
@@ -362,6 +372,7 @@ class SchedulerBase:
         """
         proc = self.processes.get(event.pid)
         del self.processes[event.pid]
+        self.remove_process_from_starvation_list(event.pid);
         self.used_cpus -= 1
         # shouldn't need this as pages are freed before the process is killed
         for page in proc.pages:
@@ -372,6 +383,7 @@ class SchedulerBase:
                 self.pages_swap.remove(page.key)
             if page.key in self.pages_used:
                 self.pages_used.remove(page.key)
+        self.on_PROC_KILL(event.pid)
 
     def _update_PROC_END(self, event):
         """A process was terminated and was gracefully ended
@@ -393,8 +405,8 @@ class SchedulerBase:
             if page.key in self.pages_used:
                 self.pages_used.remove(page.key)
 
-
-                
+        self.on_PROC_END(event.pid)
+   
     def exchange_processes(self, pid_inactive, pid_active):
         self.release_process_from_cpu(pid_active)
         self.move_process_to_cpu(pid_inactive)
@@ -406,8 +418,7 @@ class SchedulerBase:
     def release_process_from_cpu(self,pid):
         self.cpu_owners.remove(pid)
         self.move_process(pid)
-        
-        
+         
     def exchange_pages(self,page_swap, page_ram):
         self.move_page_to_swap(page_ram)
         self.move_page_to_ram(page_swap)
@@ -422,8 +433,7 @@ class SchedulerBase:
         self.pages_swap.add(page)
         self.pages_ram.remove(page)
         self.move_page(page[0],page[1])
-        
-        
+  
     def remove_process_from_starvation_list(self,pid):
         for starvation_level in self.starvation.keys():
             if pid in self.starvation[starvation_level]:
@@ -433,4 +443,32 @@ class SchedulerBase:
         pass
 
 
+    def on_IO_QUEUE(self, io_count):
+        pass
+    def on_PAGE_NEW(self, page):
+        pass
+    def on_PAGE_USE(self, key, use):
+        pass
+    def on_PAGE_SWAP(self, page, swap):
+        pass
+    def on_PAGE_FREE(self, page):
+        pass
+    def on_PROC_NEW(self, pid):
+        pass
+    def on_PROC_CPU(self, pid, cpu):
+        pass
+    def on_PROC_STARV(self, pid, starvation_level):
+        pass
+    def on_PROC_WAIT_IO(self, pid, waiting_for_io):
+        pass
+    def on_PROC_WAIT_PAGE(self, pid, waiting_for_page):
+        pass
 
+    def on_PROC_KILL(self):
+        pass
+
+    def on_PROC_END(self):
+        pass
+
+    def on_PROC_TERM(self):
+        pass
