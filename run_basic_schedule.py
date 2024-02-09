@@ -19,18 +19,19 @@ class RunBasicSchedule(scheduler_extended.SchedulderExtended):
                 sched_order = sched_order + process_list
 
             ##remove processes that are waiting for io-events
+            sched_order_new = sched_order.copy()    
             for process in sched_order:
                 if self.is_process_waiting_for_io(process):
-                    sched_order.remove(process)
+                    sched_order_new.remove(process)
                     
             ##trim sched_order to available cpu slots
-            sched_order = sched_order[:self.cpu_count] 
+            sched_order_new = sched_order_new[:self.cpu_count] 
             
         
             pages_order = list()
             ##create list of needed pages in ram
           
-            for entry in sched_order:
+            for entry in sched_order_new:
                 process = self.processes.get(entry)
                 for page in process.pages:
                     if (page.key in self.pages_used):
@@ -50,7 +51,7 @@ class RunBasicSchedule(scheduler_extended.SchedulderExtended):
 
             #calculate instruction set
             new_cpu_owners = set()
-            new_cpu_owners.update(sched_order)
+            new_cpu_owners.update(sched_order_new)
         
             #find processes that need to be removed
             processes_to_release = self.cpu_owners.difference(new_cpu_owners)
