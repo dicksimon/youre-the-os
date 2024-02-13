@@ -36,7 +36,7 @@ class RunBasicSchedule(scheduler_extended.SchedulderExtended):
                 for page in process.pages:
                     if (page.key in self.pages_used):
                         pages_order.append(page.key)
-            
+
             pages_order = pages_order[:self.ram_count]
             new_pages_in_ram = set()
             new_pages_in_ram.update(pages_order)             
