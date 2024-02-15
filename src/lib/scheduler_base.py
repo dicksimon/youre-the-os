@@ -41,6 +41,7 @@ to generate events back to the game
 from dataclasses import dataclass, field
 from typing import List
 from collections import OrderedDict
+from lib import logger
 
 #
 # A copy of the game's statea
@@ -87,6 +88,7 @@ class IoQueue:
 class SchedulerBase:
 
     ###data structures
+    logger = logger.Logger()
 
     # map of processes
     processes: dict[int,Process] = {}
@@ -101,7 +103,10 @@ class SchedulerBase:
 
     terminated_processes = []
 
-    cpu_owners = set()
+
+    cpus_active = set()
+
+    cpus_inactive = set()
     
     # number of CPUs being used
     used_cpus = 0
@@ -118,8 +123,14 @@ class SchedulerBase:
     
     ##toDo include global settings
     settings = globals();
+    cpus_inactive_limit = 42
+    cpus_active_limit = 16
     cpu_count = 16
-    ram_count = 16 * 4;
+    ram_limit = 16 * 4;
+    swap_limit = 16 * 7
+    page_count = 0
+    swap_count = 0 
+    ram_count = 0
 
 
     #event queue returned to the game
@@ -155,33 +166,63 @@ class SchedulerBase:
 
     # scheduler base instruction set
     def exchange_processes(self, pid_inactive, pid_active):
-        self.release_process_from_cpu(pid_active)
-        self.move_process_to_cpu(pid_inactive)
+        ret_val = False
+        if self.release_process_from_cpu(pid_active) & self.move_process_to_cpu(pid_inactive):
+            ret_val = True
+        return ret_val
 
+        
     def move_process_to_cpu(self,pid):
-        self.cpu_owners.add(pid)
-        self.move_process(pid)
-
+        if len(self.cpus_active) == self.cpus_active_limit:
+            ret_val = False;
+        else:
+            self.cpus_active.add(pid)
+            if pid in self.cpus_inactive:
+                self.cpus_inactive.remove(pid)
+            self.move_process(pid)
+            ret_val = True
+        return ret_val
+    
     def release_process_from_cpu(self,pid):
-        self.cpu_owners.remove(pid)
-        self.move_process(pid)
+        if len(self.cpus_inactive) == self.cpus_inactive_limit:
+            ret_val = False;
+        else:
+            self.cpus_inactive.add(pid)
+            if pid in self.cpus_active:
+                self.cpus_active.remove(pid)
+            self.move_process(pid)
+            ret_val = True
+        return ret_val
          
     def exchange_pages(self,page_swap, page_ram):
-        self.move_page_to_swap(page_ram)
-        self.move_page_to_ram(page_swap)
+        ret_val = False
+        if self.move_page_to_swap(page_ram) & self.move_page_to_ram(page_swap):
+            ret_val = True
+        return ret_val
     
     def move_page_to_ram(self,page):
-        self.pages_ram.add(page)
-        if page in self.pages_swap:
-            self.pages_swap.remove(page)
-        self.move_page(page[0],page[1])
+        if len(self.pages_swap) == self.ram_limit:
+            ret_val = False;
+        else:
+            self.pages_ram.add(page)
+            if page in self.pages_swap:
+                self.pages_swap.remove(page)
+            self.move_page(page[0],page[1])
+            ret_val = True
+        return ret_val
     
     def move_page_to_swap(self,page):
-        self.pages_swap.add(page)
-        if page in self.pages_ram:
-            self.pages_ram.remove(page)
-        self.move_page(page[0],page[1])
-
+        if len(self.pages_swap) == self.swap_limit:
+            ret_val = False;
+        else:
+            self.pages_swap.add(page)
+            if page in self.pages_ram:
+                self.pages_ram.remove(page)
+            self.move_page(page[0],page[1])
+            ret_val = True
+        return ret_val
+        
+            
 
     # handling of incoming events and data structures
     def _update_IO_QUEUE(self, event):
@@ -219,7 +260,11 @@ class SchedulerBase:
         if event.use:
             self.pages_used.add(key)
 
+        self.logger.create_page(key,not event.swap)
         self.on_PAGE_NEW(page)
+        self.page_count += 1
+        if self.page_count >= self.ram_limit + self.swap_limit:
+            print("maximum page number reached")
 
     def _update_PAGE_USE(self, event):
         """A page 'use' flag has changed
@@ -247,6 +292,7 @@ class SchedulerBase:
         
         self.pages[page].use = event.use
         self.on_PAGE_USE(page,event.use)
+        self.logger.page_use(page, event.use)
 
     def _update_PAGE_SWAP(self, event):
         """A page was swapped
@@ -260,6 +306,7 @@ class SchedulerBase:
         """
         page = (event.pid, event.idx)
         
+        
         if event.swap:
             self.pages_swap.add(page)
             if page in self.pages_ram:
@@ -269,8 +316,10 @@ class SchedulerBase:
             if page in self.pages_swap:
                   self.pages_swap.remove(page)
         
-        self.pages[(event.pid, event.idx)].swap = event.swap
+        
+        self.pages[page].swap = event.swap
         self.on_PAGE_SWAP(page, event.swap);
+        self.logger.move_page(page,not event.swap)
 
     def _update_PAGE_FREE(self, event):
         """A page is freed
@@ -297,7 +346,9 @@ class SchedulerBase:
         except ValueError:
             pass
 
+        self.logger.free_page(key)
         self.on_PAGE_FREE(page)
+        self.page_count -= 1
 
     def _update_PROC_NEW(self, event):
         """A new process is created
@@ -310,7 +361,9 @@ class SchedulerBase:
         """
         self.processes[event.pid] = Process(event.pid)
         self.starvation[0].append(event.pid)
+        self.cpus_inactive.add(event.pid)
         self.on_PROC_NEW(event.pid)
+        
 
     def _update_PROC_CPU(self, event):
         """A process was moved into or out of a CPU
@@ -323,10 +376,16 @@ class SchedulerBase:
             .cpu: bool, if is in CPU or not
         """
         self.processes[event.pid].cpu = event.cpu
+
         if event.cpu:
-            self.used_cpus += 1
+            self.cpus_active.add(event.pid)
+            if event.pid in self.cpus_inactive:
+                self.cpus_inactive.remove(event.pid)
         else:
-            self.used_cpus -= 1
+            self.cpus_inactive.add(event.pid)
+            if event.pid in self.cpus_active:
+                  self.cpus_active.remove(event.pid)
+
         self.on_PROC_CPU(event.pid,event.cpu)
 
     def _update_PROC_STARV(self, event):
@@ -415,10 +474,16 @@ class SchedulerBase:
         proc = self.processes.get(event.pid)
         del self.processes[event.pid]
         self.remove_process_from_starvation_list(event.pid);
-        self.used_cpus -= 1
+        
+        if event.pid in self.cpus_active:
+            self.cpus_active.remove(event.pid)
+
+        if event.pid in self.cpus_inactive:
+            self.cpus_inactive.remove(event.pid)
+
 
         # shouldn't need this as pages are freed before the process is killed
-        """
+        
         for page in proc.pages:
             del self.pages[page.key]
             if page.key in self.pages_ram:
@@ -427,7 +492,7 @@ class SchedulerBase:
                 self.pages_swap.remove(page.key)
             if page.key in self.pages_used:
                 self.pages_used.remove(page.key)
-        """
+        
         self.on_PROC_KILL(event.pid)
 
     def _update_PROC_END(self, event):
@@ -441,9 +506,11 @@ class SchedulerBase:
         proc = self.processes.pop(event.pid)
         self.used_cpus -= 1
 
+        if event.pid in self.cpus_active:
+            self.cpus_active.remove(event.pid)
 
         # shouldn't need this as pages are freed before the process is removed
-        """
+        
         for page in proc.pages:
             del self.pages[page.key]
             if page.key in self.pages_ram:
@@ -452,10 +519,11 @@ class SchedulerBase:
                 self.pages_swap.remove(page.key)
             if page.key in self.pages_used:
                 self.pages_used.remove(page.key)
-        """
+        print ("process was terminated" + "\n")
+        print (event.pid)
+
         self.on_PROC_END(event.pid)
    
-
    # hook functions for schedulding algorithms
     def on_IO_QUEUE(self, io_count):
         pass
@@ -477,13 +545,10 @@ class SchedulerBase:
         pass
     def on_PROC_WAIT_PAGE(self, pid, waiting_for_page):
         pass
-
     def on_PROC_KILL(self, pid):
         pass
-
     def on_PROC_END(self, pid):
         pass
-
     def on_PROC_TERM(self, pid):
         pass
 
