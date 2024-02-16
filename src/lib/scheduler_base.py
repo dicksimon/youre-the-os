@@ -42,6 +42,9 @@ from dataclasses import dataclass, field
 from typing import List
 from collections import OrderedDict
 from lib import logger
+from lib.constants import (
+    MAX_PROCESSES, MAX_CPU_COUNT, MAX_RAM_ROWS, MAX_PAGES_PER_PROCESS
+)
 
 #
 # A copy of the game's statea
@@ -123,14 +126,11 @@ class SchedulerBase:
     
     ##toDo include global settings
     settings = globals();
-    cpus_inactive_limit = 42
-    cpus_active_limit = 16
-    cpu_count = 16
-    ram_limit = 16 * 4;
-    swap_limit = 16 * 7
-    page_count = 0
-    swap_count = 0 
-    ram_count = 0
+    cpus_inactive_limit = MAX_PROCESSES - MAX_CPU_COUNT
+    cpus_active_limit = MAX_CPU_COUNT
+    cpu_count = MAX_CPU_COUNT
+    ram_limit = MAX_CPU_COUNT * MAX_PAGES_PER_PROCESS;
+    swap_limit = 16 * MAX_RAM_ROWS
 
 
     #event queue returned to the game
@@ -165,9 +165,9 @@ class SchedulerBase:
         })
 
     # scheduler base instruction set
-    def exchange_processes(self, pid_inactive, pid_active):
+    def exchange_processes(self, pid_was_active, pid_was_inactive):
         ret_val = False
-        if self.release_process_from_cpu(pid_active) & self.move_process_to_cpu(pid_inactive):
+        if self.release_process_from_cpu(pid_was_active) & self.move_process_to_cpu(pid_was_inactive):
             ret_val = True
         return ret_val
 
@@ -184,24 +184,25 @@ class SchedulerBase:
         return ret_val
     
     def release_process_from_cpu(self,pid):
-        if len(self.cpus_inactive) == self.cpus_inactive_limit:
+        if len(self.cpus_inactive) == self.cpus_inactive_limit and not self.processes[pid].has_ended:
             ret_val = False;
         else:
-            self.cpus_inactive.add(pid)
+            if not self.processes[pid].has_ended:
+                self.cpus_inactive.add(pid)
             if pid in self.cpus_active:
                 self.cpus_active.remove(pid)
             self.move_process(pid)
             ret_val = True
         return ret_val
          
-    def exchange_pages(self,page_swap, page_ram):
+    def exchange_pages(self,page_was_ram, page_was_swap):
         ret_val = False
-        if self.move_page_to_swap(page_ram) & self.move_page_to_ram(page_swap):
+        if self.move_page_to_swap(page_was_ram) & self.move_page_to_ram(page_was_swap):
             ret_val = True
         return ret_val
     
     def move_page_to_ram(self,page):
-        if len(self.pages_swap) == self.ram_limit:
+        if len(self.pages_ram) == self.ram_limit:
             ret_val = False;
         else:
             self.pages_ram.add(page)
@@ -262,9 +263,6 @@ class SchedulerBase:
 
         self.logger.create_page(key,not event.swap)
         self.on_PAGE_NEW(page)
-        self.page_count += 1
-        if self.page_count >= self.ram_limit + self.swap_limit:
-            print("maximum page number reached")
 
     def _update_PAGE_USE(self, event):
         """A page 'use' flag has changed
@@ -348,7 +346,6 @@ class SchedulerBase:
 
         self.logger.free_page(key)
         self.on_PAGE_FREE(page)
-        self.page_count -= 1
 
     def _update_PROC_NEW(self, event):
         """A new process is created
@@ -483,7 +480,7 @@ class SchedulerBase:
 
 
         # shouldn't need this as pages are freed before the process is killed
-        
+        """
         for page in proc.pages:
             del self.pages[page.key]
             if page.key in self.pages_ram:
@@ -492,7 +489,7 @@ class SchedulerBase:
                 self.pages_swap.remove(page.key)
             if page.key in self.pages_used:
                 self.pages_used.remove(page.key)
-        
+        """
         self.on_PROC_KILL(event.pid)
 
     def _update_PROC_END(self, event):
@@ -504,13 +501,13 @@ class SchedulerBase:
             .pid: id of the process
         """
         proc = self.processes.pop(event.pid)
-        self.used_cpus -= 1
 
         if event.pid in self.cpus_active:
             self.cpus_active.remove(event.pid)
 
         # shouldn't need this as pages are freed before the process is removed
         
+        """
         for page in proc.pages:
             del self.pages[page.key]
             if page.key in self.pages_ram:
@@ -519,9 +516,7 @@ class SchedulerBase:
                 self.pages_swap.remove(page.key)
             if page.key in self.pages_used:
                 self.pages_used.remove(page.key)
-        print ("process was terminated" + "\n")
-        print (event.pid)
-
+        """
         self.on_PROC_END(event.pid)
    
    # hook functions for schedulding algorithms
