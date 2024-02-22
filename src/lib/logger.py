@@ -9,6 +9,7 @@ class Logger:
     
     processes: dict[int,list] = {}
     pages =  defaultdict(dict[int,list])
+    orders = []
 
 
     def create_page(self, key, ram):

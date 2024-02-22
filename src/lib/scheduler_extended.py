@@ -18,6 +18,8 @@ class SchedulderExtended(scheduler_base.SchedulerBase):
 
     def update_ram_schedule(self, new_ram_schedule):
 
+        if len(self.pages_ram) >= (self.ram_limit):
+            print ("ram limit  reached")
         pages_to_swap = self.pages_ram.difference(new_ram_schedule)
         pages_to_ram = new_ram_schedule.difference(self.pages_ram)
 
@@ -26,8 +28,13 @@ class SchedulderExtended(scheduler_base.SchedulerBase):
 
             #create empty slot in swap if all slots are blocked, in this case there should be an available slot in the ram
             if len(self.pages_swap) == self.swap_limit:
+                if self.ram_limit == len(self.pages_ram):
+                    print("error: ram and swap are full")
                 if pages_to_ram_list:
                     self.move_page_to_ram(pages_to_ram_list.pop(0))
+
+            if len(pages_to_swap)> len(pages_to_ram_list):
+                print ("error ahead in exchange pages")
 
             for page in pages_to_swap:
                 self.exchange_pages(page,pages_to_ram_list.pop(0))
@@ -49,7 +56,6 @@ class SchedulderExtended(scheduler_base.SchedulerBase):
         processes_to_add_list = list(processes_to_add)
         if len(processes_to_release) <= len(processes_to_add):
 
-
             #create empty slot in cpu_inactive area if all slots are blocked, in this case there should be an available cpu-slot
             if len(self.cpus_inactive) == self.cpus_inactive_limit:
                 if processes_to_add_list:
@@ -68,7 +74,8 @@ class SchedulderExtended(scheduler_base.SchedulerBase):
                     self.release_process_from_cpu(process)
 
     def cleanup_processes(self):
-        for process in self.terminated_processes:
+        copy_terminated_processes = self.terminated_processes.copy()
+        for process in copy_terminated_processes:
             self.release_process_from_cpu(process)    
             self.terminated_processes.remove(process)
 

@@ -80,8 +80,10 @@ class PageManager(GameObject):
     def create_page(self, pid, idx):
         page = Page(pid, idx, self)
         page_created = False
+        faulty = True
         for ram_slot in self._ram_slots:
             if not ram_slot.has_page:
+                faulty = False
                 ram_slot.page = page
                 page.view.set_xy(ram_slot.view.x, ram_slot.view.y)
                 page_created = True
@@ -89,11 +91,14 @@ class PageManager(GameObject):
         if not page_created:
             for swap_slot in self._swap_slots:
                 if not swap_slot.has_page:
+                    faulty = False
                     swap_slot.page = page
                     page.in_swap = True
                     page.view.set_xy(swap_slot.view.x, swap_slot.view.y)
                     page_created = True
                     break
+        if faulty:
+            print("34343434")
         self.children.append(page)
         self._pages[(pid, idx)] = page
         return page

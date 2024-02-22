@@ -27,10 +27,11 @@ class RunBasicSchedule(scheduler_extended.SchedulderExtended):
         new_cpus_active = set()
         new_cpus_active.update(sched_order_new)
 
-
+        self.cleanup_processes()
         self.update_cpu_schedule(new_cpus_active)    
         new_pages_in_ram = self.calculate_ram_from_cpu_schedule(self.cpus_active)
         self.update_ram_schedule(new_pages_in_ram);
+        pass
         
 
 

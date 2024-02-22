@@ -106,9 +106,7 @@ class SchedulerBase:
 
     terminated_processes = []
 
-
     cpus_active = set()
-
     cpus_inactive = set()
     
     # number of CPUs being used
@@ -126,7 +124,8 @@ class SchedulerBase:
     
     ##toDo include global settings
     settings = globals();
-    cpus_inactive_limit = MAX_PROCESSES - MAX_CPU_COUNT
+    #cpus_inactive_limit = MAX_PROCESSES - MAX_CPU_COUNT 
+    cpus_inactive_limit = MAX_PROCESSES
     cpus_active_limit = MAX_CPU_COUNT
     cpu_count = MAX_CPU_COUNT
     ram_limit = MAX_CPU_COUNT * MAX_PAGES_PER_PROCESS;
@@ -167,11 +166,13 @@ class SchedulerBase:
     # scheduler base instruction set
     def exchange_processes(self, pid_was_active, pid_was_inactive):
         ret_val = False
-        if self.release_process_from_cpu(pid_was_active) & self.move_process_to_cpu(pid_was_inactive):
-            ret_val = True
+        if self.release_process_from_cpu(pid_was_active):
+            if self.move_process_to_cpu(pid_was_inactive):
+                ret_val = True
+        if not ret_val:
+            pass
         return ret_val
-
-        
+ 
     def move_process_to_cpu(self,pid):
         if len(self.cpus_active) == self.cpus_active_limit:
             ret_val = False;
@@ -191,24 +192,29 @@ class SchedulerBase:
                 self.cpus_inactive.add(pid)
             if pid in self.cpus_active:
                 self.cpus_active.remove(pid)
-            self.move_process(pid)
+                self.move_process(pid)
             ret_val = True
         return ret_val
          
     def exchange_pages(self,page_was_ram, page_was_swap):
         ret_val = False
-        if self.move_page_to_swap(page_was_ram) & self.move_page_to_ram(page_was_swap):
-            ret_val = True
+        if self.move_page_to_swap(page_was_ram):
+            if self.move_page_to_ram(page_was_swap):
+                ret_val = True
+        if not ret_val:
+            pass
         return ret_val
     
     def move_page_to_ram(self,page):
         if len(self.pages_ram) == self.ram_limit:
             ret_val = False;
         else:
+            if page in self.pages_ram:
+                print("duplicate in ram")
             self.pages_ram.add(page)
             if page in self.pages_swap:
                 self.pages_swap.remove(page)
-            self.move_page(page[0],page[1])
+                self.move_page(page[0],page[1])
             ret_val = True
         return ret_val
     
@@ -216,10 +222,12 @@ class SchedulerBase:
         if len(self.pages_swap) == self.swap_limit:
             ret_val = False;
         else:
+            if page in self.pages_swap:
+                print("duplicate in swap")
             self.pages_swap.add(page)
             if page in self.pages_ram:
                 self.pages_ram.remove(page)
-            self.move_page(page[0],page[1])
+                self.move_page(page[0],page[1])
             ret_val = True
         return ret_val
         
@@ -254,10 +262,13 @@ class SchedulerBase:
         self.processes[event.pid].pages.append(page)
 
         if event.swap:
+            if len(self.pages_swap) == self.swap_limit:
+                print("new page created but no place left in swap")
             self.pages_swap.add(key)
         else:
+            if len(self.pages_ram) == self.ram_limit:
+                print("new page created but no place left in ram")
             self.pages_ram.add(key)
-
         if event.use:
             self.pages_used.add(key)
 
@@ -281,6 +292,7 @@ class SchedulerBase:
         """
         page = (event.pid, event.idx)
     
+        
         if event.use:
             if page not in self.pages_used:
                 self.pages_used.add(page)
@@ -304,12 +316,17 @@ class SchedulerBase:
         """
         page = (event.pid, event.idx)
         
-        
+
+        #wird eigentlich nicht benötigt?
         if event.swap:
+            if len(self.pages_swap) == self.swap_limit:
+                print (page)
             self.pages_swap.add(page)
             if page in self.pages_ram:
                 self.pages_ram.remove(page)
         else:
+            if len(self.pages_ram) == self.ram_limit:
+                print (page)
             self.pages_ram.add(page)
             if page in self.pages_swap:
                   self.pages_swap.remove(page)
@@ -361,7 +378,6 @@ class SchedulerBase:
         self.cpus_inactive.add(event.pid)
         self.on_PROC_NEW(event.pid)
         
-
     def _update_PROC_CPU(self, event):
         """A process was moved into or out of a CPU
 
@@ -445,8 +461,11 @@ class SchedulerBase:
         self.processes[event.pid].has_ended = True
         self.terminated_processes.append(event.pid)
         self.remove_process_from_starvation_list(event.pid)
+        
+        print("terminated")
+        print(event.pid)
 
-        """
+        
         proc = self.processes.get(event.pid)
         for page in proc.pages:
             if page.key in self.pages_ram:
@@ -455,7 +474,8 @@ class SchedulerBase:
                 self.pages_swap.remove(page.key)
             if page.key in self.pages_used:
                 self.pages_used.remove(page.key)
-        """
+        
+        
         self.on_PROC_TERM(event.pid)
         
     def _update_PROC_KILL(self, event):
@@ -500,23 +520,7 @@ class SchedulerBase:
         event:
             .pid: id of the process
         """
-        proc = self.processes.pop(event.pid)
-
-        if event.pid in self.cpus_active:
-            self.cpus_active.remove(event.pid)
-
-        # shouldn't need this as pages are freed before the process is removed
-        
-        """
-        for page in proc.pages:
-            del self.pages[page.key]
-            if page.key in self.pages_ram:
-                self.pages_ram.remove(page.key)
-            if page.key in self.pages_swap:
-                self.pages_swap.remove(page.key)
-            if page.key in self.pages_used:
-                self.pages_used.remove(page.key)
-        """
+        self.processes.pop(event.pid)  
         self.on_PROC_END(event.pid)
    
    # hook functions for schedulding algorithms
@@ -564,6 +568,8 @@ class SchedulerBase:
                 handler(event)
         # run the scheduler
         self.schedule()
+        #if self._event_queue:
+        #    self.logger.orders.append(self._event_queue)
         return self._event_queue
 
   
