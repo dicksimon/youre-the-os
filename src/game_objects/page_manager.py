@@ -5,7 +5,7 @@ from game_objects.page import Page
 from game_objects.page_slot import PageSlot
 
 class PageManager(GameObject):
-    _TOTAL_ROWS = 11
+    _TOTAL_ROWS = 15
     _NUM_COLS = 16
 
     def __init__(self, game):

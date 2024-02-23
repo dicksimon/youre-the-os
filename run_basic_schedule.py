@@ -4,100 +4,33 @@ from lib import scheduler_extended
 
 class RunBasicSchedule(scheduler_extended.SchedulderExtended):
 
+      
     
-    def update_cpu_schedule(self):
-    
-        #check if more slots than processes are available
-        if len(self.processes) <= self.cpu_count:
-            for process in self.processes.keys():
-                if process not in self.cpus_active:
-                    self.move_process_to_cpu(process)
-        else:
-            #Create list with all processes in descending starvation level
-            sched_order = list() 
-            for starvation_level, process_list in self.starvation.items():
-                sched_order = sched_order + process_list
-
-            ##remove processes that are waiting for io-events
-            sched_order_new = sched_order.copy()    
-            for process in sched_order:
-                if self.is_process_waiting_for_io(process):
-                    sched_order_new.remove(process)
-                    
-            ##trim sched_order to available cpu slots
-            sched_order_new = sched_order_new[:self.cpu_count] 
-            
-        
-            pages_order = list()
-            ##create list of needed pages in ram
-          
-            for entry in sched_order_new:
-                process = self.processes.get(entry)
-                for page in process.pages:
-                    if (page.key in self.pages_used):
-                        pages_order.append(page.key)
-
-            pages_order = pages_order[:self.ram_limit]
-            new_pages_in_ram = set()
-            new_pages_in_ram.update(pages_order)
-
-
-            ##update ram schedule
-            pages_to_swap = self.pages_ram.difference(new_pages_in_ram)
-            pages_to_ram = new_pages_in_ram.difference(self.pages_ram)
-
-            """
-            page_overflow = len(self.pages_swap) + len(pages_to_swap) - self.swap_limit
-            if (page_overflow > 0):
-                x = range(page_overflow)
-                for n in x:
-                    pages_to_swap.pop()
-                    new_pages_in_ram.pop()
-                    print("overflow handling")
-
-            for page in pages_to_swap:
-                self.move_page_to_swap(page)
-            
-            
-            for page in pages_to_ram:
-                self.move_page_to_ram(page)
-            """
-
-            pages_to_ram_list = list(pages_to_ram)
-            if len(pages_to_swap) <= len(pages_to_ram):
-                for page in pages_to_swap:
-                    self.exchange_pages(page,pages_to_ram_list.pop(0))
-                if pages_to_ram_list:
-                    for page in pages_to_ram_list:
-                        self.move_page_to_ram(page)
-            else:
-                for page in pages_to_swap:
-                    if pages_to_ram_list:
-                        self.exchange_pages(page,pages_to_ram_list.pop(0))
-                    else:
-                        self.move_page_to_swap(page)
-
-
-            #calculate instruction set
-            new_cpus_active = set()
-            new_cpus_active.update(sched_order_new)
-        
-            #find processes that need to be removed
-            processes_to_release = self.cpus_active.difference(new_cpus_active)
-
-            for process in processes_to_release:
-                self.release_process_from_cpu(process)
-
-            #update cpu ownership 
-            processes_to_add = new_cpus_active.difference(self.cpus_active) 
-            for process in processes_to_add:
-                self.move_process_to_cpu(process)
-
     def schedule(self):
+    
 
-        #self.cleanup_processes()
         self.clean_io_queue()
-        self.update_cpu_schedule()
+        #Create list with all processes in descending starvation level
+        sched_order = list() 
+        for starvation_level, process_list in self.starvation.items():
+            sched_order = sched_order + process_list
+
+        ##remove processes that are waiting for io-events
+        sched_order_new = sched_order.copy()    
+        for process in sched_order:
+            if self.is_process_waiting_for_io(process):
+                sched_order_new.remove(process)
+
+        ##trim sched_order to available cpu slots
+        sched_order_new = sched_order_new[:self.cpu_count] 
+        self.update_ram_schedule(self.calculate_ram_from_cpu_schedule(sched_order_new))
+                
+
+        #calculate instruction set
+        new_cpus_active = set()
+        new_cpus_active.update(sched_order_new)
+        self.update_cpu_schedule(new_cpus_active)
+ 
 
 
 #

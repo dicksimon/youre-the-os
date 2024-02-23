@@ -123,11 +123,11 @@ class SchedulerBase:
     
     ##toDo include global settings
     settings = globals();
-    cpus_inactive_limit = 42
+    cpus_inactive_limit = 42 + 16
     cpus_active_limit = 16
     cpu_count = 16
     ram_limit = 16 * 4;
-    swap_limit = 16 * 7
+    swap_limit = 16 * 11
     page_count = 0
     swap_count = 0 
     ram_count = 0
@@ -167,8 +167,10 @@ class SchedulerBase:
     # scheduler base instruction set
     def exchange_processes(self, pid_inactive, pid_active):
         ret_val = False
-        if self.release_process_from_cpu(pid_active) & self.move_process_to_cpu(pid_inactive):
+        if self.release_process_from_cpu(pid_inactive) & self.move_process_to_cpu(pid_active):
             ret_val = True
+        else:
+            pass
         return ret_val
 
         
@@ -184,10 +186,11 @@ class SchedulerBase:
         return ret_val
     
     def release_process_from_cpu(self,pid):
-        if len(self.cpus_inactive) == self.cpus_inactive_limit:
+        if len(self.cpus_inactive) == self.cpus_inactive_limit and not self.processes[pid].has_ended:
             ret_val = False;
         else:
-            self.cpus_inactive.add(pid)
+            if not self.processes[pid].has_ended:
+                self.cpus_inactive.add(pid)
             if pid in self.cpus_active:
                 self.cpus_active.remove(pid)
             self.move_process(pid)
@@ -196,12 +199,14 @@ class SchedulerBase:
          
     def exchange_pages(self,page_swap, page_ram):
         ret_val = False
-        if self.move_page_to_swap(page_ram) & self.move_page_to_ram(page_swap):
+        if self.move_page_to_swap(page_swap) and self.move_page_to_ram(page_ram):
             ret_val = True
+        else:
+            pass
         return ret_val
     
     def move_page_to_ram(self,page):
-        if len(self.pages_swap) == self.ram_limit:
+        if len(self.pages_ram) == self.ram_limit:
             ret_val = False;
         else:
             self.pages_ram.add(page)
