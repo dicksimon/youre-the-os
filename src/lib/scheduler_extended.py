@@ -3,6 +3,8 @@ from lib import scheduler_base
 
 class SchedulderExtended(scheduler_base.SchedulerBase):
     
+    def trim_process_list(self, processes):
+        return processes[:self.cpu_count] 
 
     def calculate_ram_from_cpu_schedule(self, cpu_schedule):
         pages_order = list()
@@ -17,14 +19,14 @@ class SchedulderExtended(scheduler_base.SchedulerBase):
         new_pages_in_ram.update(pages_order)
         return new_pages_in_ram
 
+    def update_cpu_schedule(self, new_cpu_schedule_list):
 
-    def update_cpu_schedule(self, new_cpu_schedule):
+        new_cpu_schedule = set()
+        new_cpu_schedule.update(new_cpu_schedule_list)
 
         processes_to_release = self.cpus_active.difference(new_cpu_schedule)
         processes_to_add = new_cpu_schedule.difference(self.cpus_active) 
         processes_to_add_list = list(processes_to_add)
-
-
 
         #create empty slot in cpu_inactive area if all slots are blocked, in this case there should be an available cpu-slot
         if len(self.cpus_inactive) == self.cpus_inactive_limit:
@@ -43,7 +45,6 @@ class SchedulderExtended(scheduler_base.SchedulerBase):
         remaining_processes = processes_to_add_list.copy()
         for process in remaining_processes:
             self.move_process_to_cpu(processes_to_add_list.pop(0))
-
 
     def update_ram_schedule(self, new_pages_in_ram):
         pages_to_swap = self.pages_ram.difference(new_pages_in_ram)
@@ -65,19 +66,23 @@ class SchedulderExtended(scheduler_base.SchedulerBase):
         for page in remaining_pages:
             self.move_page_to_ram(pages_to_ram_list.pop(0)) 
 
-
+    def remove_io_blocked_processes(self, processes):
+        ##remove processes that are waiting for io-events
+        sched_order_new = processes.copy()    
+        for process in processes:
+            if self.is_process_waiting_for_io(process):
+                sched_order_new.remove(process)
+        return sched_order_new
 
     def cleanup_processes(self):
         terminated_copy = self.terminated_processes.copy()
         for process in terminated_copy:
             self.release_process_from_cpu(process)    
             self.terminated_processes.remove(process)
-
-        
+       
     def is_process_executable(self, pid):
         return not (self.processes[pid].waiting_for_io or self.processes[pid].waiting_for_page)
-    
-    
+     
     def is_process_waiting_for_io(self, pid):
         return self.processes[pid].waiting_for_io
     
