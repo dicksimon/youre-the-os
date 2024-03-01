@@ -2,7 +2,7 @@ from math import sqrt
 from random import randint
 
 from lib.constants import (
-    ONE_SECOND, LAST_ALIVE_STARVATION_LEVEL, DEAD_STARVATION_LEVEL, MAX_PAGES_PER_PROCESS, _TIME_TO_UNSTARVE
+    ONE_SECOND, LAST_ALIVE_STARVATION_LEVEL, DEAD_STARVATION_LEVEL, MAX_PAGES_PER_PROCESS, _TIME_TO_UNSTARVE_MS
 )
 from lib import event_manager
 from lib.game_object import GameObject
