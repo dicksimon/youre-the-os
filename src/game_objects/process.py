@@ -2,15 +2,14 @@ from math import sqrt
 from random import randint
 
 from lib.constants import (
-    ONE_SECOND, LAST_ALIVE_STARVATION_LEVEL, DEAD_STARVATION_LEVEL, MAX_PAGES_PER_PROCESS
+    ONE_SECOND, LAST_ALIVE_STARVATION_LEVEL, DEAD_STARVATION_LEVEL, MAX_PAGES_PER_PROCESS, _TIME_TO_UNSTARVE
 )
 from lib import event_manager
 from lib.game_object import GameObject
 from lib.game_event_type import GameEventType
 from game_objects.views.process_view import ProcessView
 
-_STARVATION_LEVEL_DURATION_MS = 10000
-_TIME_TO_UNSTARVE_MS = 5000
+_STARVATION_LEVEL_DURATION_MS = 4500
 _NEW_PAGE_PROBABILITY_DENOMINATOR = 2
 _BLINKING_INTERVAL_MS = 200
 

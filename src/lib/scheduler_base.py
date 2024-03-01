@@ -42,9 +42,8 @@ from dataclasses import dataclass, field
 from typing import List
 from collections import OrderedDict
 from lib import logger
+from lib.constants import _TIME_TO_UNSTARVE_MS
 
-
-_TIME_TO_UNSTARVE_MS = 5000
 
 
 @dataclass
