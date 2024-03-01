@@ -138,7 +138,7 @@ class ProcessManager(GameObject):
                                 self.view.height + process.view.height)
             process.view.target_y = process_slot.view.y
 
-            event_manager.event_process_new(pid)
+            event_manager.event_process_new(pid, process.specific_unstarve_time)
             self._processes[pid] = process
             return True
         return False

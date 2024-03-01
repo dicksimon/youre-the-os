@@ -9,7 +9,7 @@ from lib.game_object import GameObject
 from lib.game_event_type import GameEventType
 from game_objects.views.process_view import ProcessView
 
-_STARVATION_LEVEL_DURATION_MS = 4500
+_STARVATION_LEVEL_DURATION_MS = 10000
 _TIME_TO_UNSTARVE_MS = 5000
 _NEW_PAGE_PROBABILITY_DENOMINATOR = 2
 _BLINKING_INTERVAL_MS = 200
@@ -28,7 +28,7 @@ class Process(GameObject):
         self._is_waiting_for_page = False
         self._has_ended = False
         self._starvation_level = 1
-        
+        self.specific_unstarve_time = randint(1, 5) * 0.5  * _TIME_TO_UNSTARVE_MS
         
         ##Verbleibende Zeit bis zum Wechsel des Starvation-Levels
         self._remaining_starvation_time = 0;
@@ -243,10 +243,10 @@ class Process(GameObject):
         if self.has_cpu and not self.is_blocked:
             
             ## Wieviel Zeit ist noch erforderlich bis der Prozess wieder Starvation-Level 0 erreicht
-            self._remaining_starvation_time = _TIME_TO_UNSTARVE_MS - (current_time - self._last_state_change_time)
+            self._remaining_starvation_time = self.specific_unstarve_time - (current_time - self._last_state_change_time)
             ###
             
-            if current_time - self._last_state_change_time >= _TIME_TO_UNSTARVE_MS:
+            if current_time - self._last_state_change_time >= self.specific_unstarve_time:
                 self._last_starvation_level_change_time = current_time
                 self._starvation_level = 0
                 

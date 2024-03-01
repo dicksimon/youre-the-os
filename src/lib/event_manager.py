@@ -95,9 +95,10 @@ def event_process_starvation(pid, level):
         'starvation_level': level
     })
 
-def event_process_new(pid):
+def event_process_new(pid, unstarve_time):
     add_event(etypes.PROC_NEW, {
-        'pid': pid
+        'pid': pid,
+        'unstarve_time' : unstarve_time
     })
 
 def event_process_cpu(pid, cpu):

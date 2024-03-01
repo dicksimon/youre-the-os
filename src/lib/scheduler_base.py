@@ -43,9 +43,9 @@ from typing import List
 from collections import OrderedDict
 from lib import logger
 
-#
-# A copy of the game's statea
-#
+
+_TIME_TO_UNSTARVE_MS = 5000
+
 
 @dataclass
 class Page:
@@ -64,6 +64,7 @@ class Page:
 @dataclass
 class Process:
     pid: int
+    unstarve_time: int
     cpu: bool = False
     starvation_level: int = 1
     waiting_for_io: bool = False
@@ -100,6 +101,9 @@ class SchedulerBase:
 
     #processes sorted
     starvation = OrderedDict({5:[], 4:[], 3:[], 2:[], 1:[], 0:[]})
+
+    #job_times
+    job_times = OrderedDict({0.5 * _TIME_TO_UNSTARVE_MS:[], _TIME_TO_UNSTARVE_MS:[], 1.5 * _TIME_TO_UNSTARVE_MS:[], 2 * _TIME_TO_UNSTARVE_MS:[], 2.5 * _TIME_TO_UNSTARVE_MS:[]})
 
     terminated_processes = []
 
@@ -141,6 +145,11 @@ class SchedulerBase:
             if pid in self.starvation[starvation_level]:
                 self.starvation[starvation_level].remove(pid)
 
+
+    def remove_process_from_job_times_list(self,pid):
+        for job_time in self.job_times.keys():
+            if pid in self.job_times[job_time]:
+                self.job_times[job_time].remove(pid)
 
     #base operations
     def move_page(self, pid, idx):
@@ -363,9 +372,11 @@ class SchedulerBase:
 
         event:
             .pid: id of the process
+            .unstarve_time: unstarve time of the process
         """
-        self.processes[event.pid] = Process(event.pid)
+        self.processes[event.pid] = Process(event.pid, event.unstarve_time)
         self.starvation[0].append(event.pid)
+        self.job_times[event.unstarve_time].append(event.pid)
         self.cpus_inactive.add(event.pid)
         self.on_PROC_NEW(event.pid)
         
@@ -453,6 +464,7 @@ class SchedulerBase:
         self.processes[event.pid].has_ended = True
         self.terminated_processes.append(event.pid)
         self.remove_process_from_starvation_list(event.pid)
+        self.remove_process_from_job_times_list(event.pid)
 
         """
         proc = self.processes.get(event.pid)
@@ -479,6 +491,7 @@ class SchedulerBase:
         proc = self.processes.get(event.pid)
         del self.processes[event.pid]
         self.remove_process_from_starvation_list(event.pid);
+        self.remove_process_from_job_times_list(event.pid)
         
         if event.pid in self.cpus_active:
             self.cpus_active.remove(event.pid)
