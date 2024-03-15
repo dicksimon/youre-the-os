@@ -25,12 +25,14 @@ class RunPrioritySchedule(scheduler_extended.SchedulderExtended):
     def schedule(self):
     
         #Create list with all processes in descending starvation level
+        self.cpu_owner = self.remove_io_blocked_processes(self.cpu_owner)
 
         if len (self.cpu_owner) < self.cpu_count:
             num_cpu_free = self.cpu_count - len(self.cpu_owner)
             starvation_list = list() 
             for starvation_level, process_list in self.starvation.items():
-                starvation_list = starvation_list + process_list
+                for process in process_list:
+                    starvation_list.append(process[0])
 
             starvation_list_copy = starvation_list.copy()
             for process in starvation_list_copy:

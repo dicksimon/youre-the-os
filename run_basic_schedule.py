@@ -10,7 +10,8 @@ class RunBasicSchedule(scheduler_extended.SchedulderExtended):
         #Create list with all processes in descending starvation level
         starvation_list = list() 
         for starvation_level, process_list in self.starvation.items():
-            starvation_list = starvation_list + process_list
+            for process in process_list:
+                starvation_list.append(process[0])
 
         ##remove processes that are waiting for io-events
         sched_cpu = self.remove_io_blocked_processes(starvation_list)
