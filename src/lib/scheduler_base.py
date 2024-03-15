@@ -141,8 +141,10 @@ class SchedulerBase:
 
     def remove_process_from_starvation_list(self,pid):
         for starvation_level in self.starvation.keys():
-            if pid in self.starvation[starvation_level]:
-                self.starvation[starvation_level].remove(pid)
+            remove_tuple = [process for process in self.starvation[starvation_level] if process[0] == pid]
+            if remove_tuple:
+                self.starvation[starvation_level].remove(remove_tuple[0])
+                return remove_tuple[0]
 
 
     def remove_process_from_job_times_list(self,pid):
@@ -235,8 +237,7 @@ class SchedulerBase:
             ret_val = True
         return ret_val
         
-            
-
+        
     # handling of incoming events and data structures
     def _update_IO_QUEUE(self, event):
         """IO Queue has new count
@@ -374,7 +375,7 @@ class SchedulerBase:
             .unstarve_time: unstarve time of the process
         """
         self.processes[event.pid] = Process(event.pid, event.unstarve_time)
-        self.starvation[0].append(event.pid)
+        self.starvation[0].append((event.pid,event.unstarve_time))
         self.job_times[event.unstarve_time].append(event.pid)
         self.cpus_inactive.add(event.pid)
         self.on_PROC_NEW(event.pid)
@@ -417,8 +418,8 @@ class SchedulerBase:
 
         #update starvation data_structure
         self.processes[event.pid].starvation_level = event.starvation_level
-        self.remove_process_from_starvation_list(event.pid)
-        self.starvation[event.starvation_level].append(event.pid)
+        unsort = self.remove_process_from_starvation_list(event.pid)
+        self.starvation[event.starvation_level].append(unsort)
         self.on_PROC_STARV(event.pid, event.starvation_level)
 
     def _update_PROC_WAIT_IO(self, event):
