@@ -15,9 +15,7 @@ class SchedulderExtended(scheduler_base.SchedulerBase):
                     pages_order.append(page.key)
 
         pages_order = pages_order[:self.ram_limit]
-        new_pages_in_ram = set()
-        new_pages_in_ram.update(pages_order)
-        return new_pages_in_ram
+        return pages_order
 
     def update_cpu_schedule(self, new_cpu_schedule_list):
 
@@ -46,7 +44,10 @@ class SchedulderExtended(scheduler_base.SchedulerBase):
         for process in remaining_processes:
             self.move_process_to_cpu(processes_to_add_list.pop(0))
 
-    def update_ram_schedule(self, new_pages_in_ram):
+    def update_ram_schedule(self, new_pages_in_ram_list):
+
+        new_pages_in_ram = set()
+        new_pages_in_ram.update(new_pages_in_ram_list)
         pages_to_swap = self.pages_ram.difference(new_pages_in_ram)
         pages_to_ram = new_pages_in_ram.difference(self.pages_ram)
         pages_to_ram_list = list(pages_to_ram)
