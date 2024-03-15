@@ -73,13 +73,7 @@ class SchedulderExtended(scheduler_base.SchedulerBase):
             if self.is_process_waiting_for_io(process):
                 sched_order_new.remove(process)
         return sched_order_new
-
-    def cleanup_processes(self):
-        terminated_copy = self.terminated_processes.copy()
-        for process in terminated_copy:
-            self.release_process_from_cpu(process)    
-            self.terminated_processes.remove(process)
-       
+   
     def is_process_executable(self, pid):
         return not (self.processes[pid].waiting_for_io or self.processes[pid].waiting_for_page)
      
