@@ -31,8 +31,6 @@ class RunFifoSchedule(scheduler_extended.SchedulderExtended):
             self.satisfied_processes.remove(pid)
 
 
-
-
     def schedule(self):
     
 
