@@ -22,7 +22,6 @@ from window_size import WINDOW_SIZE
 
 
 
-
 class YosEnv(gym.Env):
     metadata = {"render_modes": ["human"], "render_fps": 60}
 
@@ -34,36 +33,18 @@ class YosEnv(gym.Env):
 
             "events":MultiDiscrete([57,57,57]),
 
-            "processes": Dict({
-                "exists": MultiBinary(57,),
-                "unstarve_time": MultiDiscrete([5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5,5]),
-                "starvation_level": MultiDiscrete([6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6]),
-                "in_use": MultiBinary(57,),
-                "waiting_for_page": MultiBinary(57,),
-                "has_ended": MultiBinary(57,),
-                "pages": Dict({
-                    "page_0": Dict({
-                        "exists": MultiBinary(57,),
-                        "in_use": MultiBinary(57,),
-                        "in_swap": MultiBinary(57,) 
-                    }),
-                    "page_1": Dict({
-                        "exists": MultiBinary(57,),
-                        "in_use": MultiBinary(57,),
-                        "in_swap": MultiBinary(57,) 
-                    }),
-                    "page_2": Dict({
-                        "exists": MultiBinary(57,),
-                        "in_use": MultiBinary(57,),
-                        "in_swap": MultiBinary(57,) 
-                    }),
-                    "page_3": Dict({
-                        "exists": MultiBinary(57,),
-                        "in_use": MultiBinary(57,),
-                        "in_swap": MultiBinary(57,) 
-                    })
-                })
+            "exists": MultiBinary(57,),
+            "unstarve_time": MultiDiscrete([5 for _ in range(57)]),
+            "starvation_level": MultiDiscrete([6 for _ in range(57)]),
+            "in_use": MultiBinary(57,),
+            "waiting_for_page": MultiBinary(57,),
+            "has_ended": MultiBinary(57,),
+            "pages": Dict({
+                "exists": MultiBinary([57, 57, 57]),
+                "in_use": MultiBinary([57, 57, 57]),
+                "in_swap": MultiBinary([57, 57, 57]) 
             })
+        
         })
 
 
