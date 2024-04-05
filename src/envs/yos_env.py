@@ -1,6 +1,6 @@
 import gymnasium as gym
-from gymnasium import spaces, Env
-from gymnasium.spaces import Box, Dict, Discrete, MultiDiscrete, MultiBinary
+from gymnasium import spaces
+from gymnasium.spaces import  Dict,MultiDiscrete, MultiBinary
 import pygame
 import numpy as np
 import asyncio
@@ -9,25 +9,38 @@ import sys
 import argparse
 from enum import Enum
 
-import sys
-import os
-yos_lib_dir = '~/youre-the-os/src/lib'
-yos_src_dir = '~/youre-the-os/src'
-sys.path.append(os.path.dirname(os.path.expanduser(yos_lib_dir)))
-sys.path.append(os.path.dirname(os.path.expanduser(yos_src_dir)))
 from scenes.game import Game
 from scene_manager import scene_manager
 from game_info import TITLE
 from window_size import WINDOW_SIZE
 
 
+FPS = 60
+
+def compile_auto_script():
+    if len(sys.argv) == 1:
+        return None
+    try:
+        source_file = sys.argv[1]
+        if not path.isabs(source_file):
+            source_file = '../' + source_file
+        print('reading source file' , source_file, file=sys.stderr)
+        with open(source_file, encoding="utf_8") as in_file:
+            source = in_file.read()
+        return compile(source, source_file, 'exec')
+    except (SyntaxError, ValueError):
+        print('Compilation failed, ignoring argument', file=sys.stderr)
+        return None
+
 
 class YosEnv(gym.Env):
-    metadata = {"render_modes": ["human"], "render_fps": 60}
+    metadata = {"render_modes": ["human"], "render_fps": FPS}
 
     def __init__(self, render_mode=None, size=5):
 
-        self.action_space = spaces.MultiDiscrete([57,57,57,57,57,57,57,57,57,57,57,57,57,57,57,57])
+        self.render_mode = None
+
+        self.action_space = spaces.MultiDiscrete([57 for _ in _ range(16)])
 
         self.observation_space = Dict({
 
@@ -48,68 +61,79 @@ class YosEnv(gym.Env):
         })
 
 
-        #self.size = size  # The size of the square grid
-        #self.window_size = 512  # The size of the PyGame window
-        #assert render_mode is None or render_mode in self.metadata["render_modes"]
-        #self.render_mode = render_mode
-
-        self.window = None
-        self.clock = None
-
-
 
     def reset(self, seed=None, options=None):
+        
+
+        self.events = []
+        self.done = False
         # We need the following line to seed self.np_random
+
         super().reset(seed=seed)
         observation = self.get_obs()
-        info = self.get_info()
+        info = dict()
 
-        #self._render_frame()
+        if self.render_mode == "human":
+            
+            source_filename, difficulty_config = parse_arguments()
+            compiled_script = compile_auto_script(source_filename)
+            
+            pygame.init()
+            pygame.font.init()
+            
+            screen = pygame.display.set_mode(WINDOW_SIZE)
+            self.clock = pygame.time.Clock()
+            
+            icon = pygame.image.load(path.join('assets', 'icon.png'))
+            pygame.display.set_caption(TITLE)
+            pygame.display.set_icon(icon)
+            
+            scenes = {}
+            game_scene = Game(screen, scenes, difficulty_config, compile_auto_script(), True)
+            scenes['game'] = game_scene
+            game_scene.start()
+
+            self.render()
+            
 
         return observation, info
 
-    def step(self, action): #step == schedule??
+    def step(self, action): 
         
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                sys.exit()
 
-        # entrypoint
-        ###def __call__(self, events: list):
-        """Entrypoint from game
-
-        will dispatch each event to the respective handler,
-        collecting action events to send back to the game,
-        if a handler doesn't exist, will ignore that event.
-        """
-        events = list()
-        self._event_queue.clear()
-        # update the status of process/memory
-        for event in events:
-            handler = getattr(self, f"_update_{event.etype}", None)
-            if handler is not None:
-                handler(event)
-        # run the scheduler
-        self.schedule()
-        ###return self._event_queue
+        self.scene_manager.current_scene.update(self.scene_manager.current_scene.current_time, [])
 
 
-        #Aktion die ausgeführt werden soll
-        
-        #ai_schedule.clean_io_queue()
-        #ai_schedule.update_ram_schedule()
-        #air_scheudle.update_ram_schedule()
+
+        ##generate actions 
+
+
+
+
+        ##handle actions
+        ##Part of the Skript
+
+        #events = list()
+        #self._event_queue.clear()
+        ## update the status of process/memory
+        #for event in events:
+        #    handler = getattr(self, f"_update_{event.etype}", None)
+        #    if handler is not None:
+        #        handler(event)
+        ## run the scheduler
+        #self.schedule()
+  
 
         terminated = False
-
-        #reward function
         reward = 0
- 
-        
-        ##reward = 1 if terminated else 0  # Binary sparse rewards
-        ##belohnungsfunktion
-
         observation = self._get_obs()
         info = dict()
         
-        #self._render_frame()
+        if self.render_mode == 'human':
+            self.render()
 
         return observation, reward, terminated, False, info
 
@@ -117,48 +141,13 @@ class YosEnv(gym.Env):
     def get_obs(self):
         return self.observation_space.sample()
 
-    def get_info(self):
-        return {"info":7}
-    
+
     def render(self):
-        if self.render_mode == "rgb_array":
-            return self._render_frame()
 
-    def _render_frame(self):
+        self.scene_manager.current_scene.render()
+        self.clock.tick(FPS)
 
-        if self.window is None:
-
-            pygame.init()
-            pygame.font.init()
-            screen = pygame.display.set_mode(WINDOW_SIZE)
-            icon = pygame.image.load(path.join('assets', 'icon.png'))
-            pygame.display.set_caption(TITLE)
-            pygame.display.set_icon(icon)
-            self.window = pygame.display.set_mode((self.window_size, self.window_size))
-
-            source_filename, difficulty_config = parse_arguments()
-            compiled_script = compile_auto_script(source_filename)
-
-            scenes = {}
-            game_scene = Game(screen, scenes, difficulty_config, compiled_script, True)
-            scenes['game'] = game_scene
-            game_scene.start()
-
-        if self.clock is None:
-            self.clock = pygame.time.Clock()
-
-
-        #for event in pygame.event.get():
-            #probably unneeded
-            #if event.type == pygame.QUIT:
-            #    sys.exit()
-         #   scene_manager.current_scene.update(scene_manager.current_scene.current_time, [])
-         #   scene_manager.current_scene.render()
     
-
-        # We need to ensure that human-rendering occurs at the predefined framerate.
-        # The following line will automatically add a delay to keep the framerate stable.
-        self.clock.tick(self.metadata["render_fps"])
 
     def close(self):
         if self.window is not None:
