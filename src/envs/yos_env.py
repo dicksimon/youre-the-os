@@ -9,6 +9,7 @@ import sys
 import argparse
 from enum import Enum
 
+from lib import ai_schedule
 from scenes.game import Game
 from scene_manager import scene_manager
 from game_info import TITLE
@@ -53,9 +54,9 @@ class YosEnv(gym.Env):
             "waiting_for_page": MultiBinary(57,),
             "has_ended": MultiBinary(57,),
             "pages": Dict({
-                "exists": MultiBinary([57, 57, 57]),
-                "in_use": MultiBinary([57, 57, 57]),
-                "in_swap": MultiBinary([57, 57, 57]) 
+                "exists": MultiBinary([57, 57, 57, 57]),
+                "in_use": MultiBinary([57, 57, 57, 57]),
+                "in_swap": MultiBinary([57, 57, 57, 57]) 
             })
         
         })
@@ -65,19 +66,25 @@ class YosEnv(gym.Env):
     def reset(self, seed=None, options=None):
         
 
+        self.scheduler = ai_schedule.AiSchedule()
         self.events = []
         self.done = False
-        # We need the following line to seed self.np_random
 
+
+
+        # We need the following line to seed self.np_random
         super().reset(seed=seed)
         observation = self.get_obs()
         info = dict()
 
+        difficulty_config = {'name': 'Insane',
+                            'num_cpus': 16, 'num_processes_at_startup': 42,
+                            'num_ram_rows': 4, 'new_process_probability': 1,
+                            'io_probability': 0.3}
+
+
         if self.render_mode == "human":
-            
-            source_filename, difficulty_config = parse_arguments()
-            compiled_script = compile_auto_script(source_filename)
-            
+               
             pygame.init()
             pygame.font.init()
             
@@ -100,32 +107,10 @@ class YosEnv(gym.Env):
 
     def step(self, action): 
         
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                sys.exit()
 
-        self.scene_manager.current_scene.update(self.scene_manager.current_scene.current_time, [])
-
-
-
-        ##generate actions 
-
-
-
-
-        ##handle actions
-        ##Part of the Skript
-
-        #events = list()
-        #self._event_queue.clear()
-        ## update the status of process/memory
-        #for event in events:
-        #    handler = getattr(self, f"_update_{event.etype}", None)
-        #    if handler is not None:
-        #        handler(event)
-        ## run the scheduler
-        #self.schedule()
-  
+        self.scheduler.handle_events(pygame.event.get())
+        self.events = self.scheduler.schedule()
+        self.scene_manager.current_scene.update(self.scene_manager.current_scene.current_time, self.events)
 
         terminated = False
         reward = 0
