@@ -41,18 +41,15 @@ class YosEnv(gym.Env):
 
         self.render_mode = None
 
-        self.action_space = spaces.MultiDiscrete([57 for _ in _ range(16)])
+        self.action_space = spaces.MultiDiscrete([57 for _ in range(16)])
 
         self.observation_space = Dict({
-
-            "events":MultiDiscrete([57,57,57]),
-
+            "events":MultiDiscrete([16,16,57]),
             "exists": MultiBinary(57,),
             "unstarve_time": MultiDiscrete([5 for _ in range(57)]),
             "starvation_level": MultiDiscrete([6 for _ in range(57)]),
-            "in_use": MultiBinary(57,),
+            "has_cpu": MultiBinary(57,),
             "waiting_for_page": MultiBinary(57,),
-            "has_ended": MultiBinary(57,),
             "pages": Dict({
                 "exists": MultiBinary([57, 57, 57, 57]),
                 "in_use": MultiBinary([57, 57, 57, 57]),
@@ -107,7 +104,6 @@ class YosEnv(gym.Env):
 
     def step(self, action): 
         
-
         self.scheduler.handle_events(pygame.event.get())
         self.events = self.scheduler.schedule()
         self.scene_manager.current_scene.update(self.scene_manager.current_scene.current_time, self.events)

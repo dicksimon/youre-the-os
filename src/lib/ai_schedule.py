@@ -1,10 +1,7 @@
-
 from lib import scheduler_base 
 
 
-class AiSchedule(scheduler_base.SchedulderBase):
-
-
+class AiSchedule(scheduler_base.SchedulerBase):
 
     def handle_events(self, events: list):
         self._event_queue.clear()
@@ -23,5 +20,6 @@ class AiSchedule(scheduler_base.SchedulderBase):
         #update cpu schedule
         self.update_cpu_schedule(self.cpu_owner)
 
+    def get_events(self):
         return self._event_queue
 
