@@ -37,9 +37,9 @@ def compile_auto_script():
 class YosEnv(gym.Env):
     metadata = {"render_modes": ["human"], "render_fps": FPS}
 
-    def __init__(self, render_mode=None, size=5):
+    def __init__(self, render_mode="human"):
 
-        self.render_mode = None
+        #self.render_mode = "human"
 
         self.action_space = spaces.MultiDiscrete([57 for _ in range(16)])
 
@@ -62,7 +62,7 @@ class YosEnv(gym.Env):
 
     def reset(self, seed=None, options=None):
         
-
+        self.scene_manager = scene_manager
         self.scheduler = ai_schedule.AiSchedule()
         self.events = []
         self.done = False
@@ -105,8 +105,8 @@ class YosEnv(gym.Env):
     def step(self, action): 
         
         self.scheduler.handle_events(pygame.event.get())
-        self.events = self.scheduler.schedule()
-        self.scene_manager.current_scene.update(self.scene_manager.current_scene.current_time, self.events)
+        self.scene_manager.current_scene.update(self.scene_manager.current_scene.current_time, self.scheduler.schedule())
+        self.scheduler.clear_sched_events()
 
         terminated = False
         reward = 0
@@ -125,7 +125,8 @@ class YosEnv(gym.Env):
 
     def render(self):
 
-        self.scene_manager.current_scene.render()
+        if self.scene_manager.current_scene is not None:
+            self.scene_manager.current_scene.render()
         self.clock.tick(FPS)
 
     
