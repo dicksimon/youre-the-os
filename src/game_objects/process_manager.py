@@ -35,6 +35,7 @@ class ProcessManager(GameObject):
         self._last_new_process_check = None
         self._last_process_creation = None
         self._gracefully_terminated_process_count = 0
+        self._happy_terminated_processes = 0
         self._user_terminated_process_count = 0
 
         self._new_process_probability_numerator = int(
@@ -118,7 +119,7 @@ class ProcessManager(GameObject):
         self.children.extend(self._user_terminated_process_slots)
 
     def _create_process(self, process_slot_id=None):
-        if len(self._alive_process_list) < MAX_PROCESSES:
+        if (len(self._alive_process_list) + self._gracefully_terminated_process_count - self._happy_terminated_processes)< MAX_PROCESSES:
             if process_slot_id is None:
                 for i, process_slot in enumerate(self.process_slots):
                     if process_slot.process is None:
@@ -128,17 +129,34 @@ class ProcessManager(GameObject):
             pid = self._next_pid
             self._next_pid += 1
 
+            process_has_cpu = False;
             process = Process(pid, self._game)
-            process_slot = self.process_slots[process_slot_id]
-            process_slot.process = process
+
+            if process_slot_id == None:
+                process_has_cpu = True;
+                for i, cpu in enumerate(self._cpu_list):
+                    if cpu.process is None:
+                        cpu_id = i
+                        break
+                cpu = self.cpu_list[cpu_id]
+                cpu.process = process                        
+                process.view.set_xy(cpu.view.x,
+                                self.view.height + process.view.height)
+                process.view.target_y = cpu.view.y
+                
+            else:
+                process_slot = self.process_slots[process_slot_id]
+                process_slot.process = process
+                process.view.set_xy(process_slot.view.x,
+                                self.view.height + process.view.height)
+                process.view.target_y = process_slot.view.y
+
+
             self.children.append(process)
             self._alive_process_list.append(process)
-
-            process.view.set_xy(process_slot.view.x,
-                                self.view.height + process.view.height)
-            process.view.target_y = process_slot.view.y
-
             event_manager.event_process_new(pid, process.specific_unstarve_time)
+            if process_has_cpu:
+                process.use_cpu()
             self._processes[pid] = process
             return True
         return False
@@ -170,6 +188,10 @@ class ProcessManager(GameObject):
             self._alive_process_list.remove(process)
 
         return can_terminate
+
+    def remove_happy_terminated_process(self):
+        self._happy_terminated_processes += 1
+
 
     def get_current_stats(self):
         process_count_by_starvation_level = [0, 0, 0, 0, 0, 0]

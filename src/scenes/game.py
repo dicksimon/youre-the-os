@@ -165,6 +165,22 @@ class Game(Scene):
             except Exception as exc: # pylint: disable=broad-exception-caught
                 print(exc.__class__.__name__, *exc.args, event, file=sys.stderr)
 
+
+    def _process_ai_events(self, events):
+        unknown_events = []
+        for event in events:
+            if event['type'] == 'io_queue':
+                self._process_manager.io_queue.process_events()
+            elif event['type'] == 'process':
+                self._process_manager.get_process(
+                    event['pid']).toggle()
+            elif event['type'] == 'page':
+                self._page_manager.get_page(
+                    event['pid'], event['idx']).swap()
+            else:
+                unknown_events.append(event)
+        return unknown_events
+
     def _prepare_automation_script(self):
         # pylint: disable=exec-used
         self._script_callback = None
@@ -217,5 +233,6 @@ class Game(Scene):
             dialog.update(current_time, events)
         else:
             self._process_script_events()
+            events = self._process_ai_events(events)
             for game_object in self._scene_objects:
                 game_object.update(current_time, events)
