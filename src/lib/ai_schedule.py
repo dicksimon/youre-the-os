@@ -4,7 +4,6 @@ from lib import scheduler_base
 class AiSchedule(scheduler_base.SchedulerBase):
 
     def handle_events(self, events: list):
-        self._event_queue.clear()
         for event in events:
             handler = getattr(self, f"_update_{event.etype}", None)
             if handler is not None:
@@ -13,7 +12,10 @@ class AiSchedule(scheduler_base.SchedulerBase):
 
 
     def schedule(self):
-        cpu_owner = {}
+        cpu_owner = []
+        for key in self.processes:
+            cpu_owner.append(key)
+        cpu_owner = self.trim_process_list(cpu_owner)
         #clean io_queue
         self.clean_io_queue()
         #update ram schedule 

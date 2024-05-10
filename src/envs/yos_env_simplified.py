@@ -123,7 +123,6 @@ class YosEnvSimplified(gym.Env):
             self.scene_manager.current_scene.render()
         self.clock.tick(FPS)
 
-    
 
     def close(self):
         if self.window is not None:
