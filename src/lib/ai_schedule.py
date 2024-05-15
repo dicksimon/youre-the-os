@@ -3,10 +3,11 @@ from lib import scheduler_base
 
 class AiSchedule(scheduler_base.SchedulerBase):
 
-    proc_term_count = 0
-    proc_end_count = 0
-    proc_kill_count = 0
-    
+    def __init__(self):
+        self.proc_term_count = 0
+        self.proc_end_count = 0
+        self.proc_kill_count = 0
+        super().__init__()
 
     def handle_events(self, events: list):
         for event in events:
