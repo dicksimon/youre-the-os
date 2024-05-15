@@ -31,6 +31,9 @@ class ProcessManager(GameObject):
         self._io_queue = None
         self._processes = None
 
+
+        self.available_process_ids = set(list(range(1,MAX_PROCESSES+2,1)))
+
         self._next_pid = None
         self._last_new_process_check = None
         self._last_process_creation = None
@@ -83,7 +86,7 @@ class ProcessManager(GameObject):
         self._io_queue = IoQueue(self)
         self._processes = {}
 
-        self._next_pid = 1
+        self._next_pid = self.available_process_ids.pop()
         self._last_new_process_check = 0
         self._last_process_creation = 0
         self._user_terminated_process_count = 0
@@ -127,7 +130,10 @@ class ProcessManager(GameObject):
                         break
 
             pid = self._next_pid
-            self._next_pid += 1
+            if False:
+                self._next_pid += 1
+            else:
+                self._next_pid = self.available_process_ids.pop()
 
             process_has_cpu = False;
             process = Process(pid, self._game)
@@ -162,6 +168,7 @@ class ProcessManager(GameObject):
         return False
 
     def terminate_process(self, process, by_user):
+        self.available_process_ids.add(process._pid)
         can_terminate = False
 
         if by_user:
@@ -186,6 +193,7 @@ class ProcessManager(GameObject):
 
         if can_terminate:
             self._alive_process_list.remove(process)
+
 
         return can_terminate
 
@@ -236,6 +244,10 @@ class ProcessManager(GameObject):
 
         if self._user_terminated_process_count == self.MAX_TERMINATED_BY_USER:
             processes_are_moving = False
+            #ad On#
+            self._game.game_over = True
+            return
+            #ad On#
             for child in self.children:
                 if isinstance(child, Process):
                     if child.view.target_x is not None and child.view.target_x != child.view.x:

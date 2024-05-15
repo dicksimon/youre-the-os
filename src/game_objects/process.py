@@ -139,7 +139,7 @@ class Process(GameObject):
                 if self.starvation_level == 0:
                     self.view.target_y = -self.view.height
                     #addOn
-                    self._process_manager.remove_happy_terminated_process(self)
+                    self._process_manager.remove_happy_terminated_process()
                 for page in self._pages:
                     event_manager.event_page_free(page.pid, page.idx)
                     self._page_manager.delete_page(page)
