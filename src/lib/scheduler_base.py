@@ -83,61 +83,56 @@ class IoQueue:
     io_count: int = 0
 
 
-
-
 class SchedulerBase:
 
-    ###data structures
-    logger = logger.Logger()
 
-    # map of processes
-    processes: dict[int,Process] = {}
-    # map of pages
-    pages: dict[tuple[int,int],Page] = {}
-    # number of IO events ready
-    io_queue = IoQueue()
+    def __init__(self):
+
+        ## data structures
+        self.logger = logger.Logger()
+
+        # map of processes
+        self.processes: dict[int,Process] = {}
+        # map of pages
+        self.pages: dict[tuple[int,int],Page] = {}
+        # number of IO events ready
+        self.io_queue = IoQueue()
      
+        #processes sorted
+        self.starvation = OrderedDict({5:[], 4:[], 3:[], 2:[], 1:[], 0:[]})
 
-    #processes sorted
-    starvation = OrderedDict({5:[], 4:[], 3:[], 2:[], 1:[], 0:[]})
+        #job_times
+        self.job_times = OrderedDict({0.5 * _TIME_TO_UNSTARVE_MS:[], _TIME_TO_UNSTARVE_MS:[], 1.5 * _TIME_TO_UNSTARVE_MS:[], 2 * _TIME_TO_UNSTARVE_MS:[], 2.5 * _TIME_TO_UNSTARVE_MS:[]})
 
-    #job_times
-    job_times = OrderedDict({0.5 * _TIME_TO_UNSTARVE_MS:[], _TIME_TO_UNSTARVE_MS:[], 1.5 * _TIME_TO_UNSTARVE_MS:[], 2 * _TIME_TO_UNSTARVE_MS:[], 2.5 * _TIME_TO_UNSTARVE_MS:[]})
-
-    terminated_processes = []
-
-
-    cpus_active = set()
-
-    cpus_inactive = set()
+        self.terminated_processes = []
+        self.cpus_active = set()
+        self.cpus_inactive = set()
     
-    # number of CPUs being used
-    used_cpus = 0
+        # number of CPUs being used
+        self.used_cpus = 0
 
+        #pages in use
+        self.pages_used = set()
+
+        #pages in ram
+        self.pages_ram = set()
     
-    #pages in use
-    pages_used = set()
-
-    #pages in ram
-    pages_ram = set()
+        #pages in swap
+        self.pages_swap = set()
     
-    #pages in swap
-    pages_swap = set()
-    
-    ##toDo include global settings
-    settings = globals();
-    cpus_inactive_limit = 42 + 16
-    cpus_active_limit = 16
-    cpu_count = 16
-    ram_limit = 16 * 4;
-    swap_limit = 16 * 11
-    page_count = 0
-    swap_count = 0 
-    ram_count = 0
+        ##toDo include global settings
+        self.settings = globals();
+        self.cpus_inactive_limit = 42 + 16
+        self.cpus_active_limit = 16
+        self.cpu_count = 16
+        self.ram_limit = 16 * 4;
+        self.swap_limit = 16 * 11
+        self.page_count = 0
+        self.swap_count = 0 
+        self.ram_count = 0
 
-
-    #event queue returned to the game
-    _event_queue = []
+        #event queue returned to the game
+        self._event_queue = []
 
     def remove_process_from_starvation_list(self,pid):
         for starvation_level in self.starvation.keys():
@@ -261,24 +256,29 @@ class SchedulerBase:
             .swap: bool, if page is in swap
             .use: bool, if page is in use
         """
-        key = (event.pid, event.idx);
-        page = Page(event.pid, event.idx, event.swap, event.use)
-        self.pages[key] = page
-        self.processes[event.pid].pages.append(page)
 
-        if event.swap:
-            self.pages_swap.add(key)
-        else:
-            self.pages_ram.add(key)
 
-        if event.use:
-            self.pages_used.add(key)
+        ##toDo: find reason for wrong event order in ai mode
+        if event.pid in self.processes:
+            key = (event.pid, event.idx);
+            page = Page(event.pid, event.idx, event.swap, event.use)
 
-        self.logger.create_page(key,not event.swap)
-        self.on_PAGE_NEW(page)
-        self.page_count += 1
-        if self.page_count >= self.ram_limit + self.swap_limit:
-            print("maximum page number reached")
+            self.pages[key] = page
+            self.processes[event.pid].pages.append(page)
+
+            if event.swap:
+                self.pages_swap.add(key)
+            else:
+                self.pages_ram.add(key)
+
+            if event.use:
+                self.pages_used.add(key)
+
+            self.logger.create_page(key,not event.swap)
+            self.on_PAGE_NEW(page)
+            self.page_count += 1
+            if self.page_count >= self.ram_limit + self.swap_limit:
+                print("maximum page number reached")
 
     def _update_PAGE_USE(self, event):
         """A page 'use' flag has changed
