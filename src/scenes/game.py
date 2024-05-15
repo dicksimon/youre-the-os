@@ -14,13 +14,15 @@ from game_objects.uptime_manager import UptimeManager
 
 
 class Game(Scene):
-    def __init__(self, screen, scenes, config=None, script=None, standalone=False):
+    def __init__(self, screen, scenes, config=None, script=None, standalone=False, ai_mode=False):
         self._config = config
         if self._config is None:
             self._config = default_difficulty['config']
         self._script = script
         self._script_callback = None
         self._standalone = standalone
+
+        self.ai_mode = ai_mode
 
         self._current_time = 0
         self._paused_since = None
@@ -233,6 +235,7 @@ class Game(Scene):
             dialog.update(current_time, events)
         else:
             self._process_script_events()
-            events = self._process_ai_events(events)
+            if self.ai_mode:
+                events = self._process_ai_events(events)
             for game_object in self._scene_objects:
                 game_object.update(current_time, events)

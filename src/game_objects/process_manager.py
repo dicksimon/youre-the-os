@@ -86,7 +86,10 @@ class ProcessManager(GameObject):
         self._io_queue = IoQueue(self)
         self._processes = {}
 
-        self._next_pid = self.available_process_ids.pop()
+        if self.game.ai_mode:
+            self._next_pid = self.available_process_ids.pop()
+        else:
+            self._next_pid = 1
         self._last_new_process_check = 0
         self._last_process_creation = 0
         self._user_terminated_process_count = 0
@@ -130,10 +133,10 @@ class ProcessManager(GameObject):
                         break
 
             pid = self._next_pid
-            if False:
-                self._next_pid += 1
-            else:
+            if self.game.ai_mode:
                 self._next_pid = self.available_process_ids.pop()
+            else:
+                self._next_pid += 1
 
             process_has_cpu = False;
             process = Process(pid, self._game)

@@ -42,10 +42,10 @@ class YosEnvSimplified(gym.Env):
 
         self.render_mode = "human"
 
-        #self.action_space = spaces.MultiDiscrete([57 for _ in range(16)])
+        self.action_space = spaces.MultiDiscrete([57 for _ in range(16)])
 
 
-        self.action_space = spaces.Discrete(4)
+        #self.action_space = spaces.Discrete(4)
 
 
         self.observation_space = spaces.Discrete(4)
@@ -60,7 +60,6 @@ class YosEnvSimplified(gym.Env):
         self.done = False
 
 
-
         # We need the following line to seed self.np_random
         super().reset(seed=seed)
         observation = self.get_obs()
@@ -72,38 +71,37 @@ class YosEnvSimplified(gym.Env):
                             'io_probability': 0.3}
 
 
-        if self.render_mode == "human":
-               
-            pygame.init()
-            pygame.font.init()
-            
-            screen = pygame.display.set_mode(WINDOW_SIZE)
-            self.clock = pygame.time.Clock()
-            
-            icon = pygame.image.load(path.join('assets', 'icon.png'))
-            pygame.display.set_caption(TITLE)
-            pygame.display.set_icon(icon)
-            
-            scenes = {}
-            game_scene = Game(screen, scenes, difficulty_config, compile_auto_script(), True)
-            scenes['game'] = game_scene
-            game_scene.start()
+        pygame.init()
+        pygame.font.init()
+        self.screen = pygame.display.set_mode(WINDOW_SIZE)
+        self.clock = pygame.time.Clock()
+        icon = pygame.image.load(path.join('assets', 'icon.png'))
+        pygame.display.set_caption(TITLE)
+        pygame.display.set_icon(icon)
+        
+        self.scenes = {}
+        self.game_scene = Game(self.screen, self.scenes, difficulty_config, compile_auto_script(), standalone=True, ai_mode=True)
+        self.scenes['game'] = self.game_scene
+        self.game_scene.start()
 
+        if self.render_mode == "human":
             self.render()
             
-
         return observation, info
 
     def step(self, action): 
         
-        
         self.scheduler.handle_events(event_manager.get_events())
         event_manager.clear_events()
-        self.scene_manager.current_scene.update(self.scene_manager.current_scene.current_time, self.scheduler.schedule())
+        self.scene_manager.current_scene.update(self.scene_manager.current_scene.current_time, self.scheduler.schedule(action))
         self.scheduler.clear_sched_events()
 
-        terminated = False
-        reward = 0
+        terminated = self.game_scene.game_over
+        if terminated:
+            self.done = True
+        
+        reward = self.calc_reward(terminated)
+
         observation = self.get_obs()
         info = dict()
         
@@ -115,6 +113,13 @@ class YosEnvSimplified(gym.Env):
     
     def get_obs(self):
         return self.observation_space.sample()
+
+
+    def calc_reward(self, terminated):
+        reward = self.scheduler.calc_reward()
+        if terminated:
+            reward -= 200
+        return reward
 
 
     def render(self):
