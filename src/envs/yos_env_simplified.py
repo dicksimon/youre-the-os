@@ -42,6 +42,8 @@ class YosEnvSimplified(gym.Env):
 
         self.render_mode = "human"
 
+        self.event_manager = event_manager
+
         self.action_space = spaces.MultiDiscrete([57 for _ in range(16)])
 
 
@@ -54,16 +56,12 @@ class YosEnvSimplified(gym.Env):
 
     def reset(self, seed=None, options=None):
         
-        self.scene_manager = scene_manager
-        self.scheduler = ai_schedule.AiSchedule()
-        self.events = []
         self.done = False
 
 
         # We need the following line to seed self.np_random
         super().reset(seed=seed)
         observation = self.get_obs()
-        info = dict()
 
         difficulty_config = {'name': 'Insane',
                             'num_cpus': 16, 'num_processes_at_startup': 42,
@@ -84,36 +82,43 @@ class YosEnvSimplified(gym.Env):
         self.scenes['game'] = self.game_scene
         self.game_scene.start()
 
+
+        self.scene_manager = scene_manager
+        self.event_manager.clear_events()
+        self.scheduler = ai_schedule.AiSchedule()
+
         if self.render_mode == "human":
             self.render()
             
-        return observation, info
+        return observation, {}
 
     def step(self, action): 
         
-        self.scheduler.handle_events(event_manager.get_events())
-        event_manager.clear_events()
-        self.scene_manager.current_scene.update(self.scene_manager.current_scene.current_time, self.scheduler.schedule(action))
-        self.scheduler.clear_sched_events()
+        observation = self.get_obs()
+        asyncio.run(self.game_step(action))
 
         terminated = self.game_scene.game_over
         if terminated:
             self.done = True
-        
-        reward = self.calc_reward(terminated)
-
-        observation = self.get_obs()
-        info = dict()
-        
+            self.reset
+            return observation, self.calc_reward(terminated), terminated, False, {}
+    
         if self.render_mode == 'human':
             self.render()
 
-        return observation, reward, terminated, False, info
+        return observation, self.calc_reward(terminated), terminated, False, {}
 
     
     def get_obs(self):
         return self.observation_space.sample()
 
+
+    async def game_step(self, action):
+        self.scheduler.handle_events(self.event_manager.get_events())
+        self.event_manager.clear_events()
+        self.scene_manager.current_scene.update(self.scene_manager.current_scene.current_time, self.scheduler.schedule(action))
+        self.scheduler.clear_sched_events()
+        await asyncio.sleep(0)
 
     def calc_reward(self, terminated):
         reward = self.scheduler.calc_reward()
