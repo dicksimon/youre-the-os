@@ -537,9 +537,6 @@ class SchedulerBase:
                 self.pages_swap.remove(page.key)
             if page.key in self.pages_used:
                 self.pages_used.remove(page.key)
-        print ("process was terminated" + "\n")
-        print (event.pid)
-
         self.on_PROC_END(event.pid)
    
    # hook functions for schedulding algorithms
