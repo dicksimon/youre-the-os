@@ -20,6 +20,7 @@ from window_size import WINDOW_SIZE
 FPS = 60
 
 def compile_auto_script():
+    return None
     if len(sys.argv) == 1:
         return None
     try:
@@ -40,7 +41,7 @@ class YosEnvSimplified(gym.Env):
 
     def __init__(self, render_mode="human"):
 
-        self.render_mode = "human"
+        self.render_mode = render_mode
 
         self.event_manager = event_manager
 
@@ -70,13 +71,12 @@ class YosEnvSimplified(gym.Env):
 
 
         pygame.init()
-        pygame.font.init()
-        self.screen = pygame.display.set_mode(WINDOW_SIZE)
+        if self.render_mode == "human":
+            pygame.font.init()
+            self.screen = pygame.display.set_mode(WINDOW_SIZE)
+        else:
+            self.screen = None
         self.clock = pygame.time.Clock()
-        icon = pygame.image.load(path.join('assets', 'icon.png'))
-        pygame.display.set_caption(TITLE)
-        pygame.display.set_icon(icon)
-        
         self.scenes = {}
         self.game_scene = Game(self.screen, self.scenes, difficulty_config, compile_auto_script(), standalone=True, ai_mode=True)
         self.scenes['game'] = self.game_scene
@@ -88,6 +88,13 @@ class YosEnvSimplified(gym.Env):
         self.scheduler = ai_schedule.AiSchedule()
 
         if self.render_mode == "human":
+
+
+            
+            icon = pygame.image.load(path.join('assets', 'icon.png'))
+            pygame.display.set_caption(TITLE)
+            pygame.display.set_icon(icon)
+            
             self.render()
             
         return observation, {}
@@ -100,7 +107,6 @@ class YosEnvSimplified(gym.Env):
         terminated = self.game_scene.game_over
         if terminated:
             self.done = True
-            self.reset
             return observation, self.calc_reward(terminated), terminated, False, {}
     
         if self.render_mode == 'human':
