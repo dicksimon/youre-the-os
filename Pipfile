@@ -5,6 +5,9 @@ name = "pypi"
 
 [packages]
 pygame = "*"
+gymnasium = "*"
+stable-baselines3 = "*"
+
 
 [dev-packages]
 pygbag = "*"
