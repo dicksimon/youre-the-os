@@ -31,10 +31,12 @@ class ProcessManager(GameObject):
         self._io_queue = None
         self._processes = None
 
-
-        self.available_process_ids = set(list(range(1,MAX_PROCESSES+2,1)))
+        #toDo fix this: MAX_PROCESSES+1
+        self.available_process_ids = set(list(range(1,MAX_PROCESSES+1)))
 
         self._next_pid = None
+        self._first_process = True
+        
         self._last_new_process_check = None
         self._last_process_creation = None
         self._gracefully_terminated_process_count = 0
@@ -132,10 +134,16 @@ class ProcessManager(GameObject):
                         process_slot_id = i
                         break
 
-            pid = self._next_pid
             if self.game.ai_mode:
-                self._next_pid = self.available_process_ids.pop()
+                if self._first_process:
+                    pid = self._next_pid
+                    self._first_process = False
+                else:
+                    pid = self.available_process_ids.pop()
+                    self._next_pid = pid
+                
             else:
+                pid = self._next_pid
                 self._next_pid += 1
 
             process_has_cpu = False;
