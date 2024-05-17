@@ -146,6 +146,7 @@ class SchedulerBase:
         for job_time in self.job_times.keys():
             if pid in self.job_times[job_time]:
                 self.job_times[job_time].remove(pid)
+                break
 
     #base operations
     def move_page(self, pid, idx):
