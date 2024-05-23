@@ -4,7 +4,6 @@ from gymnasium.spaces import  Dict,MultiDiscrete, MultiBinary
 
 import pygame
 import numpy as np
-import asyncio
 from os import path
 import sys
 import argparse
@@ -96,7 +95,7 @@ class YosEnvSimplified(gym.Env):
     def step(self, action): 
         
         observation = self.get_obs()
-        asyncio.run(self.game_step(action))
+        self.game_step(action)
 
         terminated = self.game_scene.game_over
         if terminated:
@@ -152,12 +151,12 @@ class YosEnvSimplified(gym.Env):
         return observation
 
 
-    async def game_step(self, action):
+    def game_step(self, action):
         self.scheduler.handle_events(self.event_manager.get_events())
         self.event_manager.clear_events()
         self.scene_manager.current_scene.update(self.scene_manager.current_scene.current_time, self.scheduler.schedule(action))
         self.scheduler.clear_sched_events()
-        await asyncio.sleep(0)
+        
 
     def calc_reward(self, terminated):
         reward = self.scheduler.calc_reward()
