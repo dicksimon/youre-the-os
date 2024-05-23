@@ -14,8 +14,10 @@ gym.register(
 
 env = gym.make("YOS-v0")
 print (env.observation_space.shape)
-env = FlattenObservationV0(env)
-print (env.observation_space.shape)
+#env = FlattenObservationV0(env)
+#print (env.observation_space.shape)
+
+print(env.observation_space.sample())
 
 
 model = A2C("MlpPolicy", env, verbose=1)
