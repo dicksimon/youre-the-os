@@ -37,8 +37,8 @@ def parse_arguments():
 
     # further customize difficulty
     parser.add_argument('--steps',
-        type=RangedInt('steps', 1, 100000),
-        help="number of total timesteps (1-100000)")
+        type=RangedInt('steps', 1, 100000000),
+        help="number of total timesteps (1-100000000)")
 
     parser.add_argument('--render',action='store', help="render mode", required=False)
     parser.add_argument('--filestore',action='store', help="filename to store model", required=True)
@@ -52,13 +52,13 @@ if __name__=="__main__":
     init = True
     timesteps,  render, filestore, fileload = parse_arguments()
 
-    log_dir = "/tmp/gym/" + filestore
+    log_dir = "/usr/local/youre-the-os/output/" + filestore + "-monitor"
     os.makedirs(log_dir, exist_ok=True)
 
     gym.register(
         id='YOS',
         entry_point='envs.yos_env_simplified:YosEnvSimplified',
-        kwargs={'render_mode': 'None' 'human'}
+        kwargs={'render_mode': 'None'}
     )
 
     if not fileload:
@@ -72,10 +72,10 @@ if __name__=="__main__":
         else:
             env=gym.make("YOS")
         env = Monitor(env,log_dir)
-        model = A2C.load("fileload", env)
+        model = A2C.load("/usr/local/youre-the-os/output/" + fileload, env)
 
     model.learn(total_timesteps=timesteps)
-    model.save("filestore")
+    model.save("/usr/local/youre-the-os/output/" + filestore)
     del model
  
 
