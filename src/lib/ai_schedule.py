@@ -4,6 +4,8 @@ from lib import scheduler_base
 class AiSchedule(scheduler_base.SchedulerBase):
 
     def __init__(self):
+        self.cpu_owner = []
+        self.proc_satisfied_count = 0
         self.proc_term_count = 0
         self.proc_end_count = 0
         self.proc_kill_count = 0
@@ -15,6 +17,12 @@ class AiSchedule(scheduler_base.SchedulerBase):
             if handler is not None:
                 handler(event)
         
+
+
+    def on_PROC_STARV(self, pid, starvation_level):
+        if pid in self.cpu_owner and starvation_level == 0:
+            self.proc_satisfied_count += 1
+
     def on_PROC_TERM(self, pid):
         self.proc_term_count
 
@@ -38,41 +46,44 @@ class AiSchedule(scheduler_base.SchedulerBase):
         return average
 
     def calc_reward(self):
-        reward_proc_events = 10 * self.proc_term_count + 20 * self.proc_end_count - 200 * (self.proc_kill_count)
+        reward_proc_events = 10 * self.proc_satisfied_count + 10 * self.proc_term_count + 20 * self.proc_end_count - 200 * (self.proc_kill_count)
 
-        reward_starvation_level = (-10) * self.get_average_starvation_level()
+        reward_starvation_level = 0
+        #reward_starvation_level = (-10) * self.get_average_starvation_level()
 
         self.proc_term_count = 0
         self.proc_end_count = 0
         self.proc_kill_count = 0
+        self.proc_satisfied_count = 0
 
-        reward = reward_proc_events + reward_starvation_level + self.schedule_reward
+        reward = reward_proc_events + reward_starvation_level 
         self.schedule_reward = 0
         return reward
 
     def derive_cpu_owner_from_action(self, action):
         calc_reward = False
-        cpu_owner = action.tolist()
-        if len(self.processes) > len(cpu_owner):
+        self.cpu_owner = action.tolist()
+        #wenn es mehr proezess 
+        if len(self.processes) > len(self.cpu_owner):
             calc_reward = True
-        cpu_owner[:] = [process for process in cpu_owner if process in self.processes]
+        self.cpu_owner[:] = [process for process in self.cpu_owner if process in self.processes]
         
         if calc_reward:
-            self.schedule_reward = (len(cpu_owner) - 16) * 10 
-        return cpu_owner
+            self.schedule_reward = (len(self.cpu_owner) - 16) * 10 
+        return self.cpu_owner
 
     def schedule(self, action):
 
         self.clean_io_queue()
 
         #get new cpu owners
-        cpu_owner = self.derive_cpu_owner_from_action(action)
+        self.cpu_owner = self.derive_cpu_owner_from_action(action)
         
         #update ram schedule
-        self.update_ram_schedule(self.calculate_ram_from_cpu_schedule(cpu_owner))
+        self.update_ram_schedule(self.calculate_ram_from_cpu_schedule(self.cpu_owner))
         
         #update cpu schedule
-        self.update_cpu_schedule(cpu_owner)
+        self.update_cpu_schedule(self.cpu_owner)
         return self._event_queue
 
     def clear_sched_events(self):
