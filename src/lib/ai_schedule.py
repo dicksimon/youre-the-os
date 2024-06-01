@@ -46,7 +46,7 @@ class AiSchedule(scheduler_base.SchedulerBase):
         return average
 
     def calc_reward(self):
-        reward_proc_events = 10 * self.proc_satisfied_count + 10 * self.proc_term_count + 20 * self.proc_end_count - 200 * (self.proc_kill_count)
+        reward_proc_events = 1 - 200 * (self.proc_kill_count)
 
         reward_starvation_level = 0
         #reward_starvation_level = (-10) * self.get_average_starvation_level()
