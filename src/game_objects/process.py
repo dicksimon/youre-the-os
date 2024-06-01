@@ -9,7 +9,7 @@ from lib.game_object import GameObject
 from lib.game_event_type import GameEventType
 from game_objects.views.process_view import ProcessView
 
-_STARVATION_LEVEL_DURATION_MS = 4500
+_STARVATION_LEVEL_DURATION_MS = 3000
 _NEW_PAGE_PROBABILITY_DENOMINATOR = 2
 _BLINKING_INTERVAL_MS = 200
 
