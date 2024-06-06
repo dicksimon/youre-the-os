@@ -5,6 +5,7 @@ import gymnasium  as gym
 from gymnasium.experimental.wrappers import FlattenObservationV0
 from gymnasium.envs.registration import register
 from stable_baselines3 import A2C
+from stable_baselines3 import PPO
 from stable_baselines3.common.env_util import make_vec_env
 from stable_baselines3.common.vec_env import SubprocVecEnv, VecNormalize, DummyVecEnv
 from stable_baselines3.common.monitor import Monitor
@@ -52,7 +53,9 @@ if __name__=="__main__":
     init = True
     timesteps,  render, filestore, fileload = parse_arguments()
 
-    log_dir = "/usr/local/youre-the-os/output/" + filestore + "-monitor"
+    path = "/home/simon/youre-the-os/output/"
+
+    log_dir = path + filestore + "-monitor"
     os.makedirs(log_dir, exist_ok=True)
 
     gym.register(
@@ -72,10 +75,10 @@ if __name__=="__main__":
         else:
             env=gym.make("YOS")
         env = Monitor(env,log_dir)
-        model = A2C.load("/usr/local/youre-the-os/output/" + fileload, env)
+        model = PPO.load(path + fileload, env)
 
     model.learn(total_timesteps=timesteps)
-    model.save("/usr/local/youre-the-os/output/" + filestore)
+    model.save(path + filestore)
     del model
  
 

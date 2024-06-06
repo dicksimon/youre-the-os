@@ -7,7 +7,14 @@ name = "pypi"
 pygame = "*"
 gymnasium = "*"
 stable-baselines3 = "*"
-
+tensorflow = "*"
+"ray[rrlib]" = "*"
+dm_tree = "*"
+pyarrow = "*"
+typer = "*"
+opencv-python = "*"
+scipy = "*"
+lz4 = "*"
 
 [dev-packages]
 pygbag = "*"
