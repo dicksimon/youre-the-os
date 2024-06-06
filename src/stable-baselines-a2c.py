@@ -60,7 +60,7 @@ if __name__=="__main__":
 
     gym.register(
         id='YOS',
-        entry_point='envs.yos_env_simplified:YosEnvSimplified',
+        entry_point='envs.yos_env:YosEnv',
         kwargs={'render_mode': 'None'}
     )
 

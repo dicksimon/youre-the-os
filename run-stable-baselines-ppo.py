@@ -6,6 +6,6 @@ args = sys.argv[1:]
 
 subprocess.run([
     'python',
-    'ppo.py',
+    'stable-baselines-ppo.py',
     *args
 ], cwd='src')

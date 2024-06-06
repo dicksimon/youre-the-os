@@ -1,13 +1,13 @@
 import gymnasium as gym
 import ray
 from ray.rllib.algorithms import ppo
-from envs import yos_env_simplified
+from envs import yos_env
 
 algo = (
     ppo.PPOConfig()
     .env_runners(num_env_runners=1)
     .resources(num_gpus=0)
-    .environment(env=yos_env_simplified.YosEnvSimplified).
+    .environment(env=yos_env.YosEnv).
     build()
 )
 

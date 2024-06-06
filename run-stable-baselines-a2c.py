@@ -8,6 +8,6 @@ args = sys.argv[1:]
 
 subprocess.run([
     'python',
-    'env_handler_simplified.py',
+    'stable-baselines-a2c.py',
     *args
 ], cwd='src')
