@@ -42,7 +42,7 @@ class YosEnvSimplified(gym.Env):
             "unstarve_time": MultiDiscrete([5 for _ in range(57)]),
             "starvation_level": MultiDiscrete([6 for _ in range(57)]),
             "has_cpu": MultiBinary(57,),
-            "waiting_for_page": MultiBinary(57,)
+            "waiting_for_io": MultiBinary(57,)
         })
 
 
@@ -83,11 +83,9 @@ class YosEnvSimplified(gym.Env):
 
         if self.render_mode == "human":
 
-
             icon = pygame.image.load(path.join('assets', 'icon.png'))
             pygame.display.set_caption(TITLE)
-            pygame.display.set_icon(icon)
-            
+            pygame.display.set_icon(icon)            
             self.render()
             
         return observation, {}
@@ -113,7 +111,7 @@ class YosEnvSimplified(gym.Env):
         unstarve_time = np.zeros([57], dtype=np.int8)
         starvation_level = np.zeros([57], dtype=np.int8)
         has_cpu = np.zeros([57],dtype=np.int8)
-        waiting_for_page = np.zeros([57], dtype=np.int8)
+        waiting_for_io = np.zeros([57], dtype=np.int8)
              
         for pid in range(57):
             self.scheduler
@@ -124,8 +122,8 @@ class YosEnvSimplified(gym.Env):
                 if pid in self.scheduler.cpus_active:
                     has_cpu[pid] = 1
 
-                if self.scheduler.processes[pid].waiting_for_page:
-                    waiting_for_page[pid] = 1
+                if self.scheduler.processes[pid].waiting_for_io:
+                    waiting_for_io[pid] = 1
 
 
             for job_time in self.scheduler.job_times.keys():
@@ -144,7 +142,7 @@ class YosEnvSimplified(gym.Env):
             "unstarve_time": unstarve_time,
             "starvation_level": starvation_level,
             "has_cpu": has_cpu,
-            "waiting_for_page": waiting_for_page
+            "waiting_for_io": waiting_for_io
         }
 
 

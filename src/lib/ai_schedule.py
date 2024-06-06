@@ -46,31 +46,34 @@ class AiSchedule(scheduler_base.SchedulerBase):
         return average
 
     def calc_reward(self):
-        reward_proc_events = 1 - 200 * (self.proc_kill_count)
 
-        reward_starvation_level = 0
-        #reward_starvation_level = (-10) * self.get_average_starvation_level()
+        reward_proc_events = 1 - 200 * (self.proc_kill_count)
+        reward = reward_proc_events + self.calc_schedule_reward()
+
+
+        punishment_not_removed = 0
+        for pid in self.cpu_owner:
+            if self.processes[pid].has_ended:
+                punishment_not_removed += 100
 
         self.proc_term_count = 0
         self.proc_end_count = 0
         self.proc_kill_count = 0
         self.proc_satisfied_count = 0
 
-        reward = reward_proc_events + reward_starvation_level 
-        self.schedule_reward = 0
-        return reward
+        return reward - punishment_not_removed
 
     def derive_cpu_owner_from_action(self, action):
-        calc_reward = False
         self.cpu_owner = action.tolist()
-        #wenn es mehr proezess 
-        if len(self.processes) > len(self.cpu_owner):
-            calc_reward = True
+
         self.cpu_owner[:] = [process for process in self.cpu_owner if process in self.processes]
-        
-        if calc_reward:
-            self.schedule_reward = (len(self.cpu_owner) - 16) * 10 
+
         return self.cpu_owner
+
+    def calc_schedule_reward(self):
+        if len(self.processes) > len(self.cpu_owner):   
+            return (len(self.cpu_owner) - 16) * 10 
+
 
     def schedule(self, action):
 
