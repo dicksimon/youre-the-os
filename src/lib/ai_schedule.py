@@ -71,8 +71,10 @@ class AiSchedule(scheduler_base.SchedulerBase):
         return self.cpu_owner
 
     def calc_schedule_reward(self):
+        reward = 0
         if len(self.processes) > len(self.cpu_owner):   
-            return (len(self.cpu_owner) - 16) * 10 
+            reward = (len(self.cpu_owner) - 16) * 10 
+        return reward
 
 
     def schedule(self, action):
