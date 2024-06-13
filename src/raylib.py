@@ -95,18 +95,18 @@ class Raylib_Generic():
             self.config = SACConfig().training(gamma=0.9, lr=0.01, train_batch_size=32)
             self.config = self.config.env_runners(num_env_runners=1)
 
-        self.config = self.config.resources(num_gpus=0)
+        self.config = self.config.resources(num_gpus=1)
         self.algo = self.config.build(env=yos_env.YosEnv)
         
 
     def train(self, iterations, path):
-
         for i in range(iterations):
             self.algo.train()
         self.algo.save(checkpoint_dir= self.path + algo_name + "/" + path)
 
 
     def load(self, path):
+        self.env_class = yos_env.YosEnv
         self.algo = Algorithm.from_checkpoint(self.path + algo_name + "/" + path)
 
     def test(self):
@@ -127,7 +127,7 @@ class Raylib_Generic():
 
 if __name__=="__main__":
     algo_name, render, iterations, checkpoint_load , checkpoint_save = parse_arguments()
-    agent = Raylib_Generic("/home/simon/youre-the-os/", algo_name)
+    agent = Raylib_Generic("/usr/local/youre-the-os/agent-results/", algo_name)
     
     if render:
         agent.load(checkpoint_load)
