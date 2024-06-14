@@ -148,7 +148,7 @@ def reset_game(difficulty_config, compiled_script):
 def run_loops(steps):
     filestore_name = source_filename[:-3]
 
-    f = open("../output/" + filestore_name + "-results.csv", "a")
+    f = open("../algorithms-results/" + filestore_name + "-results.csv", "a")
     for episode in range(1,steps+1):
         game_container = reset_game(difficulty_config, compiled_script)
         asyncio.run(main(game_container))
