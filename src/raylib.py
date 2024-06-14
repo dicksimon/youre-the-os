@@ -95,7 +95,9 @@ class Raylib_Generic():
             self.config = SACConfig().training(gamma=0.9, lr=0.01, train_batch_size=32)
             self.config = self.config.env_runners(num_env_runners=1)
 
-        self.config = self.config.resources(num_gpus=1)
+        self.config = self.config.learners(num_gpus_per_learner=0)
+        self.config = self.config.env_runners(num_gpus_per_env_runner=0) 
+        self.config = self.config.resources(num_gpus=0)
         self.algo = self.config.build(env=yos_env.YosEnv)
         
 
@@ -122,12 +124,12 @@ class Raylib_Generic():
             obs, reward, done, truncated, info = env.step(action)
             episode_reward += reward
 
-        return episode_reward
+        return episode_reward, reward
     
 
 if __name__=="__main__":
     algo_name, render, iterations, checkpoint_load , checkpoint_save = parse_arguments()
-    agent = Raylib_Generic("/usr/local/youre-the-os/agent-results/", algo_name)
+    agent = Raylib_Generic("/home/simon/youre-the-os/agent-results/", algo_name)
     
     if render:
         agent.load(checkpoint_load)
