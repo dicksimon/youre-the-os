@@ -6,7 +6,7 @@ class AiSchedule(scheduler_base.SchedulerBase):
     def __init__(self):
         self.latest_cpu_owner = []
         self.cpu_owner = []
-        self.reward_schedule = 0
+        self.schedule_reward = 0
         self.proc_satisfied_count = 0
         self.proc_term_count = 0
         self.proc_end_count = 0
@@ -66,8 +66,7 @@ class AiSchedule(scheduler_base.SchedulerBase):
     
 
     def calc_reward_v2(self):
-        
-        return self.reward_schedule
+        return self.schedule_reward
 
 
     def derive_cpu_owner_from_action(self, action):
@@ -75,7 +74,7 @@ class AiSchedule(scheduler_base.SchedulerBase):
 
         self.cpu_owner[:] = [process for process in self.cpu_owner if process in self.processes]
 
-        self.calc_scheule_reward_v2(self.latest_cpu_owner, self.cpu_owner)
+        self.calc_schedule_reward_v2(self.latest_cpu_owner, self.cpu_owner)
 
         self.latest_cpu_owner = self.cpu_owner
         return self.cpu_owner
@@ -109,7 +108,7 @@ class AiSchedule(scheduler_base.SchedulerBase):
 
             #get starvation level of 16th elem 
         if len(starvation_list) >= MAX_CPU_COUNT:
-            proc_min_starv = starvation_list[MAX_CPU_COUNT]
+            proc_min_starv = starvation_list[MAX_CPU_COUNT-1]
             min_starv_level = self.processes[proc_min_starv].starvation_level
 
             for proc in procs_in:
@@ -139,7 +138,6 @@ class AiSchedule(scheduler_base.SchedulerBase):
         self._event_queue.clear()
 
     def calculate_ram_from_cpu_schedule(self, cpu_schedule):
-        schedule_reward = 0
         pages_order = list()
         for entry in cpu_schedule:
             process = self.processes.get(entry)
@@ -148,5 +146,4 @@ class AiSchedule(scheduler_base.SchedulerBase):
                     pages_order.append(page.key)
 
         pages_order = pages_order[:self.ram_limit]
-        self.schedule_reward = schedule_reward
         return pages_order
