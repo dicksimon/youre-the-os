@@ -1,4 +1,6 @@
 .venv
 __pycache__
 src/build
+agent-results/
+algorithms-results/
 .vscode/launch.json
