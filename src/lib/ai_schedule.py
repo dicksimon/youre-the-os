@@ -94,10 +94,11 @@ class AiSchedule(scheduler_base.SchedulerBase):
         
         #have removed processes terminated?
         for proc in procs_out:
-            if not self.processes[proc].starvation_level == 0:
-                reward -= 10
-            else:
-                reward += 10
+            if proc in self.processes:
+                if not self.processes[proc].starvation_level == 0:
+                    reward -= 10
+                else:
+                    reward += 10
         
         #are processes with the highest starvation level selected?
             #Create list with all processes in descending starvation level

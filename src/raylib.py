@@ -100,6 +100,7 @@ class Raylib_Generic():
             self.config = SACConfig().training(gamma=0.9, lr=0.01, train_batch_size=32)
             self.config = self.config.env_runners(num_env_runners=self.env_num)
 
+        self.config = self.config.resources(num_gpus=0)
         self.config = self.config.learners(num_gpus_per_learner=0)
         self.config = self.config.env_runners(num_gpus_per_env_runner=0) 
     
