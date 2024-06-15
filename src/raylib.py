@@ -109,12 +109,12 @@ class Raylib_Generic():
     def train(self, iterations, path):
         for i in range(iterations):
             self.algo.train()
-        self.algo.save(checkpoint_dir= self.path + algo_name + "/" + path)
+        self.algo.save(checkpoint_dir= self.path + algo_name + "/v1-multiple/" + path)
 
 
     def load(self, path):
         self.env_class = yos_env.YosEnv
-        self.algo = Algorithm.from_checkpoint(self.path + algo_name + "/" + path)
+        self.algo = Algorithm.from_checkpoint(self.path + algo_name + "/v1-multiple/" + path)
 
     def test(self):
 
@@ -134,7 +134,7 @@ class Raylib_Generic():
 
 if __name__=="__main__":
     algo_name, render, iterations, checkpoint_load , checkpoint_save, env_num = parse_arguments()
-    agent = Raylib_Generic("/home/simon/youre-the-os/agent-results/", algo_name, env_num)
+    agent = Raylib_Generic("/usr/local/youre-the-os/agent-results/", algo_name, env_num)
     
     if render:
         agent.load(checkpoint_load)
