@@ -1,10 +1,12 @@
 from lib import scheduler_base 
-
+from lib.constants import MAX_CPU_COUNT
 
 class AiSchedule(scheduler_base.SchedulerBase):
 
     def __init__(self):
+        self.latest_cpu_owner = []
         self.cpu_owner = []
+        self.reward_schedule = 0
         self.proc_satisfied_count = 0
         self.proc_term_count = 0
         self.proc_end_count = 0
@@ -50,7 +52,6 @@ class AiSchedule(scheduler_base.SchedulerBase):
         reward_proc_events = 1 - 200 * (self.proc_kill_count)
         reward = reward_proc_events + self.calc_schedule_reward()
 
-
         punishment_not_removed = 0
         for pid in self.cpu_owner:
             if self.processes[pid].has_ended:
@@ -62,19 +63,61 @@ class AiSchedule(scheduler_base.SchedulerBase):
         self.proc_satisfied_count = 0
 
         return reward - punishment_not_removed
+    
+
+    def calc_reward_v2(self):
+        
+        return self.reward_schedule
+
 
     def derive_cpu_owner_from_action(self, action):
         self.cpu_owner = action.tolist()
 
         self.cpu_owner[:] = [process for process in self.cpu_owner if process in self.processes]
 
+        self.calc_scheule_reward_v2(self.latest_cpu_owner, self.cpu_owner)
+
+        self.latest_cpu_owner = self.cpu_owner
         return self.cpu_owner
 
     def calc_schedule_reward(self):
         reward = 0
         if len(self.processes) > len(self.cpu_owner):   
-            reward = (len(self.cpu_owner) - 16) * 10 
+            reward = (len(self.cpu_owner) - MAX_CPU_COUNT) * 10 
         return reward
+
+
+    def calc_schedule_reward_v2(self, latest_schedule, new_schedule):
+
+        reward = 0
+        procs_out = list(set(latest_schedule) - set(new_schedule))
+        procs_in =  list(set(new_schedule) - set(latest_schedule))       
+        
+        #have removed processes terminated?
+        for proc in procs_out:
+            if not self.processes[proc].starvation_level == 0:
+                reward -= 10
+            else:
+                reward += 10
+        
+        #are processes with the highest starvation level selected?
+            #Create list with all processes in descending starvation level
+        starvation_list = list() 
+        for starvation_level, process_list in self.starvation.items():
+            for process in process_list:
+                starvation_list.append(process[0])
+
+            #get starvation level of 16th elem 
+        if len(starvation_list) >= MAX_CPU_COUNT:
+            proc_min_starv = starvation_list[MAX_CPU_COUNT]
+            min_starv_level = self.processes[proc_min_starv].starvation_level
+
+            for proc in procs_in:
+                starvation_level = self.processes[proc].starvation_level
+                if starvation_level < min_starv_level:
+                    reward -= 10
+
+        self.schedule_reward = reward
 
 
     def schedule(self, action):
@@ -84,6 +127,7 @@ class AiSchedule(scheduler_base.SchedulerBase):
         #get new cpu owners
         self.cpu_owner = self.derive_cpu_owner_from_action(action)
         
+    
         #update ram schedule
         self.update_ram_schedule(self.calculate_ram_from_cpu_schedule(self.cpu_owner))
         
