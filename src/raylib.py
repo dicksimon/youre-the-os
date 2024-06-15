@@ -41,21 +41,26 @@ def parse_arguments():
     parser.add_argument('--iterations',
         type=RangedInt('iterations', 1, 100000000),
         help="number of total timesteps (1-100000000)", required=False)
+    parser.add_argument('--env_num',
+        type=RangedInt('env_num', 1, 32),
+        help="number of envs (1-32)", required=False)
     parser.add_argument('--render',action='store', help="agent mode", required=False)
     parser.add_argument('--algo_name',action='store', help="algorithm to use", required=True)
     parser.add_argument('--checkpoint_load',action='store', help="checkpoint load name", required=False)
     parser.add_argument('--checkpoint_save',action='store', help="checkpoint save name", required=False)
+
     args = parser.parse_args()
     
 
-    return args.algo_name, args.render, args.iterations, args.checkpoint_load , args.checkpoint_save
+    return args.algo_name, args.render, args.iterations, args.checkpoint_load , args.checkpoint_save, args.env_num
 
 
 class Raylib_Generic():
 
-    def __init__(self,path, algo_name):
+    def __init__(self,path, algo_name, env_num=1):
         self.path = path
         self.algo_name = algo_name
+        self.env_num = env_num
 
     def setup(self, algo_name):
         self.env_class = yos_env.YosEnv
@@ -64,20 +69,20 @@ class Raylib_Generic():
         if algo_name == "ppo":
             self.config = PPOConfig()
             self.config = self.config.training(gamma=0.9, lr=0.01, kl_coeff=0.3,train_batch_size=128)
-            self.config = self.config.env_runners(num_env_runners=1)
+            self.config = self.config.env_runners(num_env_runners=self.env_num)
 
         elif algo_name == "cql":
             self.config = CQLConfig().training(gamma=0.9, lr=0.01)
-            self.config = self.config.env_runners(num_env_runners=4)
+            self.config = self.config.env_runners(num_env_runners=self.env_num)
 
         elif algo_name == "appo":
             self.config = APPOConfig().training(lr=0.01, grad_clip=30.0, train_batch_size=50)
-            self.config = self.config.env_runners(num_env_runners=1)
+            self.config = self.config.env_runners(num_env_runners=self.env_num)
 
         elif algo_name == "impala":
             self.config = ImpalaConfig()
             self.config = self.config.training(lr=0.0003, train_batch_size=512)
-            self.config = self.config.env_runners(num_env_runners=1)
+            self.config = self.config.env_runners(num_env_runners=self.env_num)
 
         elif algo_name == "dqn":
             self.config = DQNConfig()
@@ -89,15 +94,15 @@ class Raylib_Generic():
                     "prioritized_replay_eps": 3e-6,
                 }
             self.config = self.config.training(replay_buffer_config=replay_config)
-            self.config = self.config.env_runners(num_env_runners=1)
+            self.config = self.config.env_runners(num_env_runners=self.env_num)
 
         elif algo_name == "sac":
             self.config = SACConfig().training(gamma=0.9, lr=0.01, train_batch_size=32)
-            self.config = self.config.env_runners(num_env_runners=1)
+            self.config = self.config.env_runners(num_env_runners=self.env_num)
 
         self.config = self.config.learners(num_gpus_per_learner=0)
         self.config = self.config.env_runners(num_gpus_per_env_runner=0) 
-        self.config = self.config.resources(num_gpus=0)
+    
         self.algo = self.config.build(env=yos_env.YosEnv)
         
 
@@ -128,8 +133,8 @@ class Raylib_Generic():
     
 
 if __name__=="__main__":
-    algo_name, render, iterations, checkpoint_load , checkpoint_save = parse_arguments()
-    agent = Raylib_Generic("/home/simon/youre-the-os/agent-results/", algo_name)
+    algo_name, render, iterations, checkpoint_load , checkpoint_save, env_num = parse_arguments()
+    agent = Raylib_Generic("/home/simon/youre-the-os/agent-results/", algo_name, env_num)
     
     if render:
         agent.load(checkpoint_load)
