@@ -109,12 +109,12 @@ class Raylib_Generic():
     def train(self, iterations, path):
         for i in range(iterations):
             self.algo.train()
-        self.algo.save(checkpoint_dir= self.path + algo_name + "/v1-multiple/" + path)
+        self.algo.save(checkpoint_dir= self.path + algo_name + "/v2-multiple/" + path)
 
 
     def load(self, path):
         self.env_class = yos_env.YosEnv
-        self.algo = Algorithm.from_checkpoint(self.path + algo_name + "/v1-multiple/" + path)
+        self.algo = Algorithm.from_checkpoint(self.path + algo_name + "/v2-multiple/" + path)
 
     def test(self):
 
