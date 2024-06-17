@@ -44,23 +44,29 @@ def parse_arguments():
     parser.add_argument('--env_num',
         type=RangedInt('env_num', 1, 32),
         help="number of envs (1-32)", required=False)
+    parser.add_argument('--gpu_num',
+        type=RangedInt('gpu_num', 0, 32),
+        help="number of gpus (0-32)", required=False)
     parser.add_argument('--render',action='store', help="agent mode", required=False)
     parser.add_argument('--algo_name',action='store', help="algorithm to use", required=True)
     parser.add_argument('--checkpoint_load',action='store', help="checkpoint load name", required=False)
     parser.add_argument('--checkpoint_save',action='store', help="checkpoint save name", required=False)
 
+
+
     args = parser.parse_args()
     
 
-    return args.algo_name, args.render, args.iterations, args.checkpoint_load , args.checkpoint_save, args.env_num
+    return args.algo_name, args.render, args.iterations, args.checkpoint_load , args.checkpoint_save, args.env_num, args.gpu_num
 
 
 class Raylib_Generic():
 
-    def __init__(self,path, algo_name, env_num=1):
+    def __init__(self,path, algo_name, env_num=1, gpu_num=0):
         self.path = path
         self.algo_name = algo_name
         self.env_num = env_num
+        self.gpu_num = gpu_num
         self.dirname = "/v3/"
 
     def setup(self, algo_name):
@@ -101,11 +107,16 @@ class Raylib_Generic():
             self.config = SACConfig().training(gamma=0.9, lr=0.01, train_batch_size=32)
             self.config = self.config.env_runners(num_env_runners=self.env_num)
 
-        self.config = self.config.resources(num_gpus=0)
-        self.config = self.config.learners(num_gpus_per_learner=0)
-        self.config = self.config.env_runners(num_gpus_per_env_runner=0) 
-    
+        if self.gpu_num:
+            self.config = self.config.resources(num_gpus=0)
+            self.config = self.config.learners(num_gpus_per_learner=0)
+            self.config = self.config.env_runners(num_gpus_per_env_runner=0) 
+        else:
+            self.config = self.config.resources(num_gpus=0.0001)
+            self.config = self.config.env_runners(num_gpus_per_env_runner=((self.gpu_num - 0.0001)/self.env_num)) 
+
         self.algo = self.config.build(env=yos_env.YosEnv)
+
         
 
     def train(self, iterations, path):
@@ -129,7 +140,6 @@ class Raylib_Generic():
         elif self.algo_name == "impala":
             self.config = ImpalaConfig()
             self.config = self.config.training(lr=0.0003, train_batch_size=512)
-
 
         self.config = self.config.resources(num_gpus=0)
         self.config = self.config.learners(num_gpus_per_learner=0)
@@ -158,8 +168,8 @@ class Raylib_Generic():
     
 
 if __name__=="__main__":
-    algo_name, render, iterations, checkpoint_load , checkpoint_save, env_num = parse_arguments()
-    agent = Raylib_Generic("/home/simon/youre-the-os/agent-results/", algo_name, env_num)
+    algo_name, render, iterations, checkpoint_load , checkpoint_save, env_num, gpu_num = parse_arguments()
+    agent = Raylib_Generic("/usr/local/youre-the-os/agent-results/", algo_name, env_num, gpu_num)
     
     if render:
         agent.load(checkpoint_load)
