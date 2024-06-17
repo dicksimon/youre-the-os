@@ -61,6 +61,7 @@ class Raylib_Generic():
         self.path = path
         self.algo_name = algo_name
         self.env_num = env_num
+        self.dirname = "/v3/"
 
     def setup(self, algo_name):
         self.env_class = yos_env.YosEnv
@@ -110,7 +111,7 @@ class Raylib_Generic():
     def train(self, iterations, path):
         for i in range(iterations):
             self.algo.train()
-        self.algo.save(checkpoint_dir= self.path + algo_name + "/v2-multiple/" + path)
+        self.algo.save(checkpoint_dir= self.path + self.algo_name + self.dirname + path)
 
 
     def load(self, path):
@@ -135,7 +136,7 @@ class Raylib_Generic():
         self.config = self.config.env_runners(num_gpus_per_env_runner=0) 
         self.config = self.config.env_runners(num_env_runners=1)
         self.algo = self.config.build(env=yos_env.YosEnv)
-        self.algo.restore(self.path + algo_name + "/v2-multiple/" + path)
+        self.algo.restore(self.path + self.algo_name + self.dirname + path)
 
 
         #self.algo = Algorithm.from_checkpoint(self.path + algo_name + "/v2-multiple/" + path)
