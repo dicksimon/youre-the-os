@@ -92,6 +92,7 @@ class AiSchedule(scheduler_base.SchedulerBase):
         procs_out = list(set(latest_schedule) - set(new_schedule))
         procs_in =  list(set(new_schedule) - set(latest_schedule))       
         
+
         #have removed processes terminated?
         for proc in procs_out:
             if proc in self.processes:
@@ -110,12 +111,17 @@ class AiSchedule(scheduler_base.SchedulerBase):
             #get starvation level of 16th elem 
         if len(starvation_list) >= MAX_CPU_COUNT:
             proc_min_starv = starvation_list[MAX_CPU_COUNT-1]
-            min_starv_level = self.processes[proc_min_starv].starvation_level
-
-            for proc in procs_in:
-                starvation_level = self.processes[proc].starvation_level
-                if starvation_level < min_starv_level:
-                    reward -= 10
+        else:
+            proc_min_starv = starvation_list[len(starvation_list)]
+        
+        
+        min_starv_level = self.processes[proc_min_starv].starvation_level
+        for proc in new_schedule:
+            starvation_level = self.processes[proc].starvation_level
+            if starvation_level < min_starv_level:
+                reward -= 10
+            elif starvation_level > min_starv_level:
+                reward += 10
 
         self.schedule_reward = reward
 
@@ -127,7 +133,6 @@ class AiSchedule(scheduler_base.SchedulerBase):
         #get new cpu owners
         self.cpu_owner = self.derive_cpu_owner_from_action(action)
         
-    
         #update ram schedule
         self.update_ram_schedule(self.calculate_ram_from_cpu_schedule(self.cpu_owner))
         
