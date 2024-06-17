@@ -115,7 +115,30 @@ class Raylib_Generic():
 
     def load(self, path):
         self.env_class = yos_env.YosEnv
-        self.algo = Algorithm.from_checkpoint(self.path + algo_name + "/v2-multiple/" + path)
+
+        if self.algo_name == "ppo":
+            self.config = PPOConfig()
+            self.config = self.config.training(gamma=0.9, lr=0.01, kl_coeff=0.3,train_batch_size=128)
+        
+
+        elif self.algo_name == "appo":
+            self.config = APPOConfig()
+            self.config = self.training(lr=0.01, grad_clip=30.0, train_batch_size=50)
+
+        elif self.algo_name == "impala":
+            self.config = ImpalaConfig()
+            self.config = self.config.training(lr=0.0003, train_batch_size=512)
+
+
+        self.config = self.config.resources(num_gpus=0)
+        self.config = self.config.learners(num_gpus_per_learner=0)
+        self.config = self.config.env_runners(num_gpus_per_env_runner=0) 
+        self.config = self.config.env_runners(num_env_runners=1)
+        self.algo = self.config.build(env=yos_env.YosEnv)
+        self.algo.restore(self.path + algo_name + "/v2-multiple/" + path)
+
+
+        #self.algo = Algorithm.from_checkpoint(self.path + algo_name + "/v2-multiple/" + path)
 
     def test(self):
 
@@ -135,7 +158,7 @@ class Raylib_Generic():
 
 if __name__=="__main__":
     algo_name, render, iterations, checkpoint_load , checkpoint_save, env_num = parse_arguments()
-    agent = Raylib_Generic("/usr/local/youre-the-os/agent-results/", algo_name, env_num)
+    agent = Raylib_Generic("/home/simon/youre-the-os/agent-results/", algo_name, env_num)
     
     if render:
         agent.load(checkpoint_load)
