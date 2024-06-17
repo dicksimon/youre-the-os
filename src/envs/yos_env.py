@@ -126,15 +126,15 @@ class YosEnv(gym.Env):
                     waiting_for_io[pid] = 1
 
 
-            for job_time in self.scheduler.job_times.keys():
-                if pid in self.scheduler.job_times[job_time]:
-                    unstarve_time[pid] = (job_time/(0.5 * _TIME_TO_UNSTARVE_MS)) - 1 
-                    break
+                for job_time in self.scheduler.job_times.keys():
+                    if pid in self.scheduler.job_times[job_time]:
+                        unstarve_time[pid] = (job_time/(0.5 * _TIME_TO_UNSTARVE_MS)) - 1 
+                        break
 
-            for level in self.scheduler.starvation.keys():
-                if [process for process in self.scheduler.starvation[level] if process[0] == pid]:
-                    starvation_level[pid] = level
-                    break
+                for level in self.scheduler.starvation.keys():
+                    if [process for process in self.scheduler.starvation[level] if process[0] == pid]:
+                        starvation_level[pid] = level
+                        break
 
 
         observation = {
