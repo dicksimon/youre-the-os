@@ -108,20 +108,23 @@ class AiSchedule(scheduler_base.SchedulerBase):
             for process in process_list:
                 starvation_list.append(process[0])
 
-            #get starvation level of 16th elem 
-        if len(starvation_list) >= MAX_CPU_COUNT:
-            proc_min_starv = starvation_list[MAX_CPU_COUNT-1]
-        else:
-            proc_min_starv = starvation_list[len(starvation_list)]
+
+        len_starvation = len(starvation_list)
+             
+        if len_starvation:    
+
+            if len_starvation >= MAX_CPU_COUNT:
+                proc_min_starv = starvation_list[MAX_CPU_COUNT-1]
+            else:
+                proc_min_starv = starvation_list[len(starvation_list)-1]
         
-        
-        min_starv_level = self.processes[proc_min_starv].starvation_level
-        for proc in new_schedule:
-            starvation_level = self.processes[proc].starvation_level
-            if starvation_level < min_starv_level:
-                reward -= 10
-            elif starvation_level > min_starv_level:
-                reward += 10
+            min_starv_level = self.processes[proc_min_starv].starvation_level
+            for proc in new_schedule:
+                starvation_level = self.processes[proc].starvation_level
+                if starvation_level < min_starv_level:
+                    reward -= 10
+                elif starvation_level > min_starv_level:
+                    reward += 10
 
         self.schedule_reward = reward
 
