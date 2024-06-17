@@ -38,7 +38,6 @@ class YosEnv(gym.Env):
         self.action_space = spaces.MultiDiscrete([57 for _ in range(16)])
 
         self.observation_space = Dict({
-            "exists": MultiBinary(57,),
             "unstarve_time": MultiDiscrete([5 for _ in range(57)]),
             "starvation_level": MultiDiscrete([6 for _ in range(57)]),
             "has_cpu": MultiBinary(57,),
@@ -107,7 +106,6 @@ class YosEnv(gym.Env):
 
     
     def get_obs(self):
-        exists = np.ones([57], dtype=np.int8)
         unstarve_time = np.zeros([57], dtype=np.int8)
         starvation_level = np.zeros([57], dtype=np.int8)
         has_cpu = np.zeros([57],dtype=np.int8)
@@ -115,10 +113,8 @@ class YosEnv(gym.Env):
              
         for pid in range(57):
             self.scheduler
-            if pid not in self.scheduler.processes:
-                exists[pid] = 0
-
-            else:
+            if pid in self.scheduler.processes:
+                
                 if pid in self.scheduler.cpus_active:
                     has_cpu[pid] = 1
 
@@ -138,7 +134,6 @@ class YosEnv(gym.Env):
 
 
         observation = {
-            "exists": exists,
             "unstarve_time": unstarve_time,
             "starvation_level": starvation_level,
             "has_cpu": has_cpu,
