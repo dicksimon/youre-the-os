@@ -49,41 +49,33 @@ class AiSchedule(scheduler_base.SchedulerBase):
 
     def calc_reward(self):
 
-        reward_proc_events = 1 - 200 * (self.proc_kill_count)
-        reward = reward_proc_events + self.calc_schedule_reward()
+        #reward_proc_events = 1 - 200 * (self.proc_kill_count)
+        #reward = reward_proc_events + self.calc_schedule_reward()
+#
+        #punishment_not_removed = 0
+        #for pid in self.cpu_owner:
+        #    if self.processes[pid].has_ended:
+        #        punishment_not_removed += 100
+#
+        #self.proc_term_count = 0
+        #self.proc_end_count = 0
+        #self.proc_kill_count = 0
+        #self.proc_satisfied_count = 0
 
-        punishment_not_removed = 0
-        for pid in self.cpu_owner:
-            if self.processes[pid].has_ended:
-                punishment_not_removed += 100
-
-        self.proc_term_count = 0
-        self.proc_end_count = 0
-        self.proc_kill_count = 0
-        self.proc_satisfied_count = 0
-
-        return reward - punishment_not_removed
+        #return reward - punishment_not_removed
     
-
-    def calc_reward_v2(self):
         return self.schedule_reward
 
 
     def derive_cpu_owner_from_action(self, action):
         self.cpu_owner = action.tolist()
 
-        self.cpu_owner[:] = [process for process in self.cpu_owner if process in self.processes]
-
         self.calc_schedule_reward_v4(self.latest_cpu_owner, self.cpu_owner)
-
+        self.cpu_owner[:] = [process for process in self.cpu_owner if process in self.processes]
+        
         self.latest_cpu_owner = self.cpu_owner
         return self.cpu_owner
 
-    def calc_schedule_reward(self):
-        reward = 0
-        if len(self.processes) > len(self.cpu_owner):   
-            reward = (len(self.cpu_owner) - MAX_CPU_COUNT) * 10 
-        return reward
 
 
     def calc_schedule_reward_v2(self, latest_schedule, new_schedule):
@@ -92,7 +84,6 @@ class AiSchedule(scheduler_base.SchedulerBase):
         procs_out = list(set(latest_schedule) - set(new_schedule))
         procs_in =  list(set(new_schedule) - set(latest_schedule))       
         
-
         #have removed processes terminated?
         for proc in procs_out:
             if proc in self.processes:
@@ -152,11 +143,15 @@ class AiSchedule(scheduler_base.SchedulerBase):
         
             min_starv_level = self.processes[proc_min_starv].starvation_level
             for proc in new_schedule:
-                starvation_level = self.processes[proc].starvation_level
-                if starvation_level < min_starv_level:
+
+                if proc in self.processes:
+                    starvation_level = self.processes[proc].starvation_level
+                    if starvation_level < min_starv_level:
+                        reward -= 10
+                    elif starvation_level >= min_starv_level:
+                        reward += 10
+                else:
                     reward -= 10
-                elif starvation_level >= min_starv_level:
-                    reward += 10
 
         self.schedule_reward = reward
 

@@ -153,7 +153,7 @@ class YosEnv(gym.Env):
 
     def calc_reward(self, terminated):
         episode_score = self.game_scene._score_manager.score
-        reward = self.scheduler.calc_reward_v4()
+        reward = self.scheduler.calc_reward()
         return reward
 
 

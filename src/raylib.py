@@ -169,7 +169,7 @@ class Raylib_Generic():
 
 if __name__=="__main__":
     algo_name, render, iterations, checkpoint_load , checkpoint_save, env_num, gpu_num = parse_arguments()
-    agent = Raylib_Generic("/home/simon/youre-the-os/agent-results/", algo_name, env_num, gpu_num)
+    agent = Raylib_Generic("/usr/local/youre-the-os/agent-results/", algo_name, env_num, gpu_num)
     
     if render:
         agent.load(checkpoint_load)
