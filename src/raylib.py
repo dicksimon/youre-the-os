@@ -67,7 +67,7 @@ class Raylib_Generic():
         self.algo_name = algo_name
         self.env_num = env_num
         self.gpu_num = gpu_num
-        self.dirname = "/v4/"
+        self.dirname = "/v5/"
 
     def setup(self, algo_name):
         self.env_class = yos_env.YosEnv
