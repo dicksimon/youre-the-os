@@ -74,7 +74,7 @@ class AiSchedule(scheduler_base.SchedulerBase):
 
         self.cpu_owner[:] = [process for process in self.cpu_owner if process in self.processes]
 
-        self.calc_schedule_reward_v2(self.latest_cpu_owner, self.cpu_owner)
+        self.calc_schedule_reward_v4(self.latest_cpu_owner, self.cpu_owner)
 
         self.latest_cpu_owner = self.cpu_owner
         return self.cpu_owner
@@ -124,6 +124,38 @@ class AiSchedule(scheduler_base.SchedulerBase):
                 if starvation_level < min_starv_level:
                     reward -= 10
                 elif starvation_level > min_starv_level:
+                    reward += 10
+
+        self.schedule_reward = reward
+
+
+    def calc_schedule_reward_v4(self, latest_schedule, new_schedule):
+
+        reward = 0
+        
+        #are processes with the highest starvation level selected?
+            #Create list with all processes in descending starvation level
+        starvation_list = list() 
+        for starvation_level, process_list in self.starvation.items():
+            for process in process_list:
+                starvation_list.append(process[0])
+
+
+        len_starvation = len(starvation_list)
+             
+        if len_starvation:    
+
+            if len_starvation >= MAX_CPU_COUNT:
+                proc_min_starv = starvation_list[MAX_CPU_COUNT-1]
+            else:
+                proc_min_starv = starvation_list[len(starvation_list)-1]
+        
+            min_starv_level = self.processes[proc_min_starv].starvation_level
+            for proc in new_schedule:
+                starvation_level = self.processes[proc].starvation_level
+                if starvation_level < min_starv_level:
+                    reward -= 10
+                elif starvation_level >= min_starv_level:
                     reward += 10
 
         self.schedule_reward = reward

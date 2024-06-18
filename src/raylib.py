@@ -67,7 +67,7 @@ class Raylib_Generic():
         self.algo_name = algo_name
         self.env_num = env_num
         self.gpu_num = gpu_num
-        self.dirname = "/v3/"
+        self.dirname = "/v4/"
 
     def setup(self, algo_name):
         self.env_class = yos_env.YosEnv
@@ -108,12 +108,12 @@ class Raylib_Generic():
             self.config = self.config.env_runners(num_env_runners=self.env_num)
 
         if self.gpu_num:
+            self.config = self.config.resources(num_gpus=0.0001)
+            self.config = self.config.env_runners(num_gpus_per_env_runner=((float(self.gpu_num) - 0.0001)/self.env_num))  
+        else:
             self.config = self.config.resources(num_gpus=0)
             self.config = self.config.learners(num_gpus_per_learner=0)
-            self.config = self.config.env_runners(num_gpus_per_env_runner=0) 
-        else:
-            self.config = self.config.resources(num_gpus=0.0001)
-            self.config = self.config.env_runners(num_gpus_per_env_runner=((self.gpu_num - 0.0001)/self.env_num)) 
+            self.config = self.config.env_runners(num_gpus_per_env_runner=0)
 
         self.algo = self.config.build(env=yos_env.YosEnv)
 
@@ -135,7 +135,7 @@ class Raylib_Generic():
 
         elif self.algo_name == "appo":
             self.config = APPOConfig()
-            self.config = self.training(lr=0.01, grad_clip=30.0, train_batch_size=50)
+            self.config = self.config.training(lr=0.01, grad_clip=30.0, train_batch_size=50)
 
         elif self.algo_name == "impala":
             self.config = ImpalaConfig()
@@ -169,7 +169,7 @@ class Raylib_Generic():
 
 if __name__=="__main__":
     algo_name, render, iterations, checkpoint_load , checkpoint_save, env_num, gpu_num = parse_arguments()
-    agent = Raylib_Generic("/usr/local/youre-the-os/agent-results/", algo_name, env_num, gpu_num)
+    agent = Raylib_Generic("/home/simon/youre-the-os/agent-results/", algo_name, env_num, gpu_num)
     
     if render:
         agent.load(checkpoint_load)
