@@ -3,6 +3,7 @@ import gymnasium as gym
 
 from ray import tune
 from envs import yos_env
+from envs import yos_env_simplified
 import ray
 from ray.rllib.algorithms.algorithm import Algorithm
 
@@ -51,28 +52,28 @@ def parse_arguments():
     parser.add_argument('--algo_name',action='store', help="algorithm to use", required=True)
     parser.add_argument('--checkpoint_load',action='store', help="checkpoint load name", required=False)
     parser.add_argument('--checkpoint_save',action='store', help="checkpoint save name", required=False)
+    parser.add_argument('--simple',action='store', help="use simplified env", required=False)
 
 
 
     args = parser.parse_args()
     
 
-    return args.algo_name, args.render, args.iterations, args.checkpoint_load , args.checkpoint_save, args.env_num, args.gpu_num
+    return args.algo_name, args.render, args.iterations, args.checkpoint_load , args.checkpoint_save, args.env_num, args.gpu_num, args.simple
 
 
 class Raylib_Generic():
 
-    def __init__(self,path, algo_name, env_num=1, gpu_num=0):
+    def __init__(self,path, algo_name, env_num=1, gpu_num=0, env_class = yos_env.YosEnv):
         self.path = path
         self.algo_name = algo_name
         self.env_num = env_num
         self.gpu_num = gpu_num
         self.dirname = "/v5/"
+        self.env_class = env_class
 
     def setup(self, algo_name):
-        self.env_class = yos_env.YosEnv
         
-
         if algo_name == "ppo":
             self.config = PPOConfig()
             self.config = self.config.training(gamma=0.9, lr=0.01, kl_coeff=0.3,train_batch_size=128)
@@ -115,7 +116,7 @@ class Raylib_Generic():
             self.config = self.config.learners(num_gpus_per_learner=0)
             self.config = self.config.env_runners(num_gpus_per_env_runner=0)
 
-        self.algo = self.config.build(env=yos_env.YosEnv)
+        self.algo = self.config.build(env=self.env_class)
 
         
 
@@ -126,8 +127,6 @@ class Raylib_Generic():
 
 
     def load(self, path):
-        self.env_class = yos_env.YosEnv
-
         if self.algo_name == "ppo":
             self.config = PPOConfig()
             self.config = self.config.training(gamma=0.9, lr=0.01, kl_coeff=0.3,train_batch_size=128)
@@ -145,7 +144,7 @@ class Raylib_Generic():
         self.config = self.config.learners(num_gpus_per_learner=0)
         self.config = self.config.env_runners(num_gpus_per_env_runner=0) 
         self.config = self.config.env_runners(num_env_runners=1)
-        self.algo = self.config.build(env=yos_env.YosEnv)
+        self.algo = self.config.build(env=self.env_class)
         self.algo.restore(self.path + self.algo_name + self.dirname + path)
 
 
@@ -164,12 +163,17 @@ class Raylib_Generic():
             obs, reward, done, truncated, info = env.step(action)
             episode_reward += reward
 
+        print(env.game_scene._score_manager.score)
         return episode_reward, reward
     
 
 if __name__=="__main__":
-    algo_name, render, iterations, checkpoint_load , checkpoint_save, env_num, gpu_num = parse_arguments()
-    agent = Raylib_Generic("/usr/local/youre-the-os/agent-results/", algo_name, env_num, gpu_num)
+    algo_name, render, iterations, checkpoint_load , checkpoint_save, env_num, gpu_num, simple = parse_arguments()
+    if simple:
+        agent = Raylib_Generic("/home/simon/youre-the-os/agent-results/", algo_name, env_num, gpu_num, yos_env_simplified.YosEnvSimplified)
+    else:
+        agent = Raylib_Generic("/home/simon/youre-the-os/agent-results/", algo_name, env_num, gpu_num)
+
     
     if render:
         agent.load(checkpoint_load)
