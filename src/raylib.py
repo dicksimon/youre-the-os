@@ -1,12 +1,13 @@
 import argparse
 import gymnasium as gym
+import numpy as np
 
 from ray import tune
 from envs import yos_env
 from envs import yos_env_simplified
 import ray
 from ray.rllib.algorithms.algorithm import Algorithm
-
+from ray.rllib.policy.policy import Policy
 from ray.rllib.algorithms.ppo import PPOConfig
 from ray.rllib.algorithms.cql import CQLConfig
 from ray.rllib.algorithms.appo import APPOConfig
@@ -53,44 +54,44 @@ def parse_arguments():
     parser.add_argument('--checkpoint_load',action='store', help="checkpoint load name", required=False)
     parser.add_argument('--checkpoint_save',action='store', help="checkpoint save name", required=False)
     parser.add_argument('--simple',action='store', help="use simplified env", required=False)
+    parser.add_argument('--reward',action='store', help="use simplified env", required=False)
 
 
 
     args = parser.parse_args()
     
 
-    return args.algo_name, args.render, args.iterations, args.checkpoint_load , args.checkpoint_save, args.env_num, args.gpu_num, args.simple
+    return args.algo_name, args.render, args.iterations, args.checkpoint_load , args.checkpoint_save, args.env_num, args.gpu_num, args.simple, args.reward
 
 
 class Raylib_Generic():
 
-    def __init__(self,path, algo_name, env_num=1, gpu_num=0, env_class = yos_env.YosEnv):
+    def __init__(self,path, algo_name, env_num=1, gpu_num=0, env_class = yos_env.YosEnv, reward_strategy = "event"):
         self.path = path
         self.algo_name = algo_name
         self.env_num = env_num
         self.gpu_num = gpu_num
-        self.dirname = "/v5/"
         self.env_class = env_class
+        self.reward_strategy = f"/{reward_strategy}/"
+        
 
     def setup(self, algo_name):
         
         if algo_name == "ppo":
             self.config = PPOConfig()
             self.config = self.config.training(gamma=0.9, lr=0.01, kl_coeff=0.3,train_batch_size=128)
-            self.config = self.config.env_runners(num_env_runners=self.env_num)
+
 
         elif algo_name == "cql":
             self.config = CQLConfig().training(gamma=0.9, lr=0.01)
-            self.config = self.config.env_runners(num_env_runners=self.env_num)
 
         elif algo_name == "appo":
             self.config = APPOConfig().training(lr=0.01, grad_clip=30.0, train_batch_size=50)
-            self.config = self.config.env_runners(num_env_runners=self.env_num)
+
 
         elif algo_name == "impala":
             self.config = ImpalaConfig()
             self.config = self.config.training(lr=0.0003, train_batch_size=512)
-            self.config = self.config.env_runners(num_env_runners=self.env_num)
 
         elif algo_name == "dqn":
             self.config = DQNConfig()
@@ -102,16 +103,17 @@ class Raylib_Generic():
                     "prioritized_replay_eps": 3e-6,
                 }
             self.config = self.config.training(replay_buffer_config=replay_config)
-            self.config = self.config.env_runners(num_env_runners=self.env_num)
 
         elif algo_name == "sac":
             self.config = SACConfig().training(gamma=0.9, lr=0.01, train_batch_size=32)
-            self.config = self.config.env_runners(num_env_runners=self.env_num)
 
         if self.gpu_num:
-            self.config = self.config.resources(num_gpus=0.0001)
-            self.config = self.config.env_runners(num_gpus_per_env_runner=((float(self.gpu_num) - 0.0001)/self.env_num))  
+            self.config = self.config.resources(num_gpus= self.gpu_num)
+            self.config = self.config.env_runners(num_env_runners=self.gpu_num)
+            self.config = self.config.env_runners(num_gpus_per_env_runner= 1)  
+            self.config = self.config.env_runners(num_envs_per_env_runner = self.env_num) 
         else:
+            self.config = self.config.env_runners(num_env_runners=self.env_num)
             self.config = self.config.resources(num_gpus=0)
             self.config = self.config.learners(num_gpus_per_learner=0)
             self.config = self.config.env_runners(num_gpus_per_env_runner=0)
@@ -123,10 +125,19 @@ class Raylib_Generic():
     def train(self, iterations, path):
         for i in range(iterations):
             self.algo.train()
-        self.algo.save(checkpoint_dir= self.path + self.algo_name + self.dirname + path)
+            save =  i % 500
+            if save == 0:
+                self.algo.save(checkpoint_dir= self.path + self.algo_name + self.reward_strategy + path + "/" + str(i))
 
 
     def load(self, path):
+        self.setup(self.algo_name)
+        self.algo.restore(self.path + self.algo_name + self.reward_strategy + path)
+
+
+
+    def test(self, path):
+
         if self.algo_name == "ppo":
             self.config = PPOConfig()
             self.config = self.config.training(gamma=0.9, lr=0.01, kl_coeff=0.3,train_batch_size=128)
@@ -145,12 +156,8 @@ class Raylib_Generic():
         self.config = self.config.env_runners(num_gpus_per_env_runner=0) 
         self.config = self.config.env_runners(num_env_runners=1)
         self.algo = self.config.build(env=self.env_class)
-        self.algo.restore(self.path + self.algo_name + self.dirname + path)
+        self.algo.restore(self.path + self.algo_name + self.reward_strategy + path)
 
-
-        #self.algo = Algorithm.from_checkpoint(self.path + algo_name + "/v2-multiple/" + path)
-
-    def test(self):
 
         env = self.env_class()
 
@@ -168,16 +175,16 @@ class Raylib_Generic():
     
 
 if __name__=="__main__":
-    algo_name, render, iterations, checkpoint_load , checkpoint_save, env_num, gpu_num, simple = parse_arguments()
+    
+    algo_name, render, iterations, checkpoint_load , checkpoint_save, env_num, gpu_num, simple, reward  = parse_arguments()
     if simple:
-        agent = Raylib_Generic("/home/simon/youre-the-os/agent-results/", algo_name, env_num, gpu_num, yos_env_simplified.YosEnvSimplified)
+        agent = Raylib_Generic("/usr/loacl/youre-the-os/agent-results/", algo_name, env_num, gpu_num, yos_env_simplified.YosEnvSimplified, reward)
     else:
-        agent = Raylib_Generic("/home/simon/youre-the-os/agent-results/", algo_name, env_num, gpu_num)
+        agent = Raylib_Generic("/usr/local/youre-the-os/agent-results/", algo_name, env_num, gpu_num, yos_env.YosEnv, reward)
 
     
     if render:
-        agent.load(checkpoint_load)
-        agent.test()
+        agent.test(checkpoint_load)
 
     elif checkpoint_load:
         agent.load(checkpoint_load)
