@@ -35,7 +35,7 @@ class YosEnv(gym.Env):
 
         self.event_manager = event_manager
 
-        self.action_space = spaces.MultiDiscrete([57 for _ in range(16)])
+        self.action_space = spaces.MultiDiscrete([57,56,55,54,53,52,51,50,49,48,47,46,45,44,43,42])
 
         self.observation_space = Dict({
             "unstarve_time": MultiDiscrete([5 for _ in range(57)]),
@@ -77,7 +77,7 @@ class YosEnv(gym.Env):
 
         self.scene_manager = scene_manager
         self.event_manager.clear_events()
-        self.scheduler = ai_schedule.AiSchedule()
+        self.scheduler = ai_schedule.AiSchedule("event")
         observation = self.get_obs()
 
         if self.render_mode == "human":
@@ -153,7 +153,7 @@ class YosEnv(gym.Env):
 
     def calc_reward(self, terminated):
         episode_score = self.game_scene._score_manager.score
-        reward = self.scheduler.calc_reward()
+        reward = self.scheduler.get_reward()
         return reward
 
 
