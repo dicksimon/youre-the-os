@@ -77,7 +77,7 @@ class YosEnv(gym.Env):
 
         self.scene_manager = scene_manager
         self.event_manager.clear_events()
-        self.scheduler = ai_schedule.AiSchedule("event")
+        self.scheduler = ai_schedule.AiSchedule("base")
         observation = self.get_obs()
 
         if self.render_mode == "human":

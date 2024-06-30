@@ -6,7 +6,6 @@ name = "pypi"
 [packages]
 pygame = "*"
 gymnasium = "*"
-stable-baselines3 = "*"
 tensorflow = "*"
 "ray[rrlib]" = "*"
 dm_tree = "*"

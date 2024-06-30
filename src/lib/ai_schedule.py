@@ -55,13 +55,8 @@ class AiSchedule(scheduler_base.SchedulerBase):
     def derive_cpu_owner_from_action(self, action):
         self.cpu_owner = action.tolist()
 
-        if self.strategy == "base":
-            self.calc_base_reward(self.latest_cpu_owner, self.cpu_owner)
-        elif self.strategy == "advanced":
-            self.calc_advanced_reward_v2(self.latest_cpu_owner, self.cpu_owner)
-        elif self.strategy == "event":
-            self.calc_event_reward_v2(self.latest_cpu_owner, self.cpu_owner)
-         
+        self.calc_master_reward(self.latest_cpu_owner, self.cpu_owner)
+
         self.cpu_owner[:] = [process for process in self.cpu_owner if process in self.processes]
         
         self.latest_cpu_owner = self.cpu_owner
@@ -188,6 +183,21 @@ class AiSchedule(scheduler_base.SchedulerBase):
 
         self.schedule_reward = reward
 
+
+
+    def calc_reward_minimal(self, latest_schedule, new_schedule):
+
+        reward = 0
+        procs_out = list(set(latest_schedule) - set(new_schedule))      
+        for proc in procs_out:
+            if proc in self.processes:
+                if self.processes[proc].starvation_level == 0:
+                    reward += 5000
+
+        self.schedule_reward = reward
+
+
+
     def calc_event_reward(self, latest_schedule, new_schedule):
 
         reward = 0
@@ -285,6 +295,53 @@ class AiSchedule(scheduler_base.SchedulerBase):
         self.schedule_reward = reward + reward_proc_events
 
 
+    def calc_master_reward(self, latest_schedule, new_schedule):
+        reward = 0
+        reward_proc_events = self.proc_satisfied_count + self.proc_end_count - self.proc_kill_count * (1000)
+ 
+        self.proc_end_count = 0
+        self.proc_kill_count = 0
+        self.proc_satisfied_count = 0
+
+
+        procs_out = list(set(latest_schedule) - set(new_schedule))  
+        procs_in = list(set(new_schedule) - set(latest_schedule))    
+        #have removed processes terminated?
+        for proc in procs_out:
+            if proc in self.processes:
+                if self.processes[proc].starvation_level == 0:                
+                    reward += 1000
+        
+        starvation_list = list() 
+        for starvation_level, process_list in self.starvation.items():
+            for process in process_list:
+                starvation_list.append(process[0])
+
+
+        len_starvation = len(starvation_list)
+        if len_starvation:    
+
+            if len_starvation >= MAX_CPU_COUNT:
+                proc_min_starv = starvation_list[MAX_CPU_COUNT-1]
+            else:
+                proc_min_starv = starvation_list[len(starvation_list)-1]
+        
+            min_starv_level = self.processes[proc_min_starv].starvation_level
+
+            for proc in procs_in:
+                if proc in self.processes:
+                    starvation_level = self.processes[proc].starvation_level
+                    if starvation_level >= min_starv_level:
+                        reward += 20
+                else:
+                    reward -= 10
+
+            for proc in new_schedule:
+                if proc in self.processes:
+                    if self.is_process_waiting_for_io(proc):
+                        reward -= 20
+
+        self.schedule_reward = reward + reward_proc_events
 
     def schedule(self, action):
 

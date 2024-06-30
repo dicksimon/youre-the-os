@@ -32,7 +32,7 @@ class ProcessManager(GameObject):
         self._processes = None
 
         #toDo fix this: MAX_PROCESSES+1
-        self.available_process_ids = set(list(range(1,MAX_PROCESSES+1)))
+        self.available_process_ids = set(list(range(0,MAX_PROCESSES)))
 
         self._next_pid = None
         self._first_process = True

@@ -10,6 +10,7 @@ import argparse
 from enum import Enum
 from typing import List
 
+from lib import ai_schedule_priority
 from lib import ai_schedule
 from lib import event_manager
 from lib.constants import _TIME_TO_UNSTARVE_MS
@@ -26,7 +27,7 @@ def compile_auto_script():
 
 
 
-class YosEnvSimplified(gym.Env):
+class YosEnvPriority(gym.Env):
     metadata = {"render_modes": ["human", "None"], "render_fps": FPS}
 
     def __init__(self, render_mode="human"):
@@ -35,13 +36,14 @@ class YosEnvSimplified(gym.Env):
 
         self.event_manager = event_manager
 
-        self.action_space = spaces.MultiDiscrete([57,56,55,54,53,52,51,50,49,48,47,46,45,44,43,42])
+        self.action_space = spaces.Discrete(3)
 
         self.observation_space = Dict({
             "unstarve_time": MultiDiscrete([5 for _ in range(57)]),
-            "starvation_level": MultiDiscrete([6 for _ in range(57)])
+            "starvation_level": MultiDiscrete([6 for _ in range(57)]),
+            "has_cpu": MultiBinary(57,),
+            "waiting_for_io": MultiBinary(57,)
         })
-
 
 
 
@@ -74,7 +76,7 @@ class YosEnvSimplified(gym.Env):
 
         self.scene_manager = scene_manager
         self.event_manager.clear_events()
-        self.scheduler = ai_schedule.AiSchedule("event")
+        self.scheduler = ai_schedule.AiSchedulePriority()
         observation = self.get_obs()
 
         if self.render_mode == "human":
