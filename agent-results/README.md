@@ -1,1 +1,0 @@
-Used for storing agent checkpoints and further results

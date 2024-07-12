@@ -310,7 +310,9 @@ class AiSchedule(scheduler_base.SchedulerBase):
         for proc in procs_out:
             if proc in self.processes:
                 if self.processes[proc].starvation_level == 0:                
-                    reward += 1000
+                    reward += 100
+                else:
+                    reward -= 10
         
         starvation_list = list() 
         for starvation_level, process_list in self.starvation.items():

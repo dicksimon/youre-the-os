@@ -2,9 +2,10 @@ import argparse
 import gymnasium as gym
 import numpy as np
 
+import sys
 from ray import tune
 from envs import yos_env
-from src.envs import yos_env_priority
+from envs import yos_env_priority
 import ray
 from ray.rllib.algorithms.algorithm import Algorithm
 from ray.rllib.policy.policy import Policy
@@ -62,7 +63,7 @@ def parse_arguments():
 
 class Raylib_Priority():
 
-    def __init__(self,path, algo_name, env_num=1, gpu_num=0, env_class = yos_env.YosEnv, reward_strategy = "base"):
+    def __init__(self,path, algo_name, env_num=1, gpu_num=0, env_class = yos_env_priority.YosEnvPriority, reward_strategy = "base"):
         self.path = path
         self.algo_name = algo_name
         self.env_num = env_num
@@ -126,7 +127,7 @@ class Raylib_Priority():
         self.config = self.config.env_runners(num_gpus_per_env_runner=0) 
         self.config = self.config.env_runners(num_env_runners=1)
         self.algo = self.config.build(env=self.env_class)
-        self.algo.restore(self.path + self.algo_name + self.reward_strategy + path)
+        self.algo.restore(self.path + self.algo_name  + path)
 
 
         env = self.env_class()
@@ -141,7 +142,7 @@ class Raylib_Priority():
             episode_reward += reward
 
         print(env.game_scene._score_manager.score)
-        return episode_reward, reward
+        return env.game_scene._score_manager.score
     
 
 if __name__=="__main__":
@@ -150,14 +151,5 @@ if __name__=="__main__":
 
     agent = Raylib_Priority("/home/simon/youre-the-os/agent-results/priority/", algo_name, env_num, gpu_num, yos_env_priority.YosEnvPriority)
 
-    
-    if render:
-        agent.test(checkpoint_load)
-
-    elif checkpoint_load:
-        agent.load(checkpoint_load)
-        agent.train(iterations, checkpoint_save)
-
-    elif checkpoint_save:
-        agent.setup(algo_name)
-        agent.train(iterations, checkpoint_save)
+    result = agent.test(checkpoint_load)
+    sys.exit(result)

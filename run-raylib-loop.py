@@ -8,6 +8,6 @@ args = sys.argv[1:]
 
 subprocess.run([
     'python',
-    'raylib.py',
+    'raylib_loop.py',
     *args
 ], cwd='src')

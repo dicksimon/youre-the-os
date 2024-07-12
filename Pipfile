@@ -8,17 +8,20 @@ pygame = "*"
 gymnasium = "*"
 tensorflow = "*"
 "ray[rrlib]" = "*"
+"ray[tune]" = "*"
 dm_tree = "*"
 pyarrow = "*"
 typer = "*"
 opencv-python = "*"
 scipy = "*"
 lz4 = "*"
+torch = "*"
 
 [dev-packages]
 pygbag = "*"
 pylint = "*"
 autopep8 = "*"
+pandas = "*"
 
 [requires]
 python_version = "3.11"

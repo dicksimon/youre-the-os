@@ -166,26 +166,20 @@ class Raylib_Generic():
             obs, reward, done, truncated, info = env.step(action)
             episode_reward += reward
 
-        print(env.game_scene._score_manager.score)
-        return episode_reward, reward
+        return env.game_scene._score_manager.score
     
 
 if __name__=="__main__":
     
     algo_name, render, iterations, checkpoint_load , checkpoint_save, env_num, gpu_num, simple, reward  = parse_arguments()
-    if simple:
-        agent = Raylib_Generic("/home/simon/youre-the-os/agent-results/", algo_name, env_num, gpu_num, yos_env.YosEnv, reward)
-    else:
-        agent = Raylib_Generic("/home/simon/youre-the-os/agent-results/", algo_name, env_num, gpu_num, yos_env.YosEnv, reward)
 
     
-    if render:
-        agent.test(checkpoint_load)
-
-    elif checkpoint_load:
-        agent.load(checkpoint_load)
-        agent.train(iterations, checkpoint_save)
-
-    elif checkpoint_save:
-        agent.setup(algo_name)
-        agent.train(iterations, checkpoint_save)
+    ending = checkpoint_load.replace("/","")
+    
+    for episode in range(1,iterations+1):
+        f = open("../agent-results/" + algo_name + "-" + ending + reward + "-priority-results.csv", "a")
+        agent = Raylib_Generic("/home/simon/youre-the-os/agent-results/", algo_name, env_num, gpu_num, yos_env.YosEnv, reward)
+        score = agent.test(checkpoint_load)
+        f.write(str(episode) + ";" + str(score) + "\n")
+        f.close()
+    sys.exit()

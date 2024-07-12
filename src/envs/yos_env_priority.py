@@ -76,7 +76,7 @@ class YosEnvPriority(gym.Env):
 
         self.scene_manager = scene_manager
         self.event_manager.clear_events()
-        self.scheduler = ai_schedule.AiSchedulePriority()
+        self.scheduler = ai_schedule_priority.AiSchedulePriority("env")
         observation = self.get_obs()
 
         if self.render_mode == "human":
@@ -107,11 +107,20 @@ class YosEnvPriority(gym.Env):
     def get_obs(self):
         unstarve_time = np.zeros([57], dtype=np.int8)
         starvation_level = np.zeros([57], dtype=np.int8)
+        has_cpu = np.zeros([57],dtype=np.int8)
+        waiting_for_io = np.zeros([57], dtype=np.int8)
              
         for pid in range(57):
             self.scheduler
             if pid in self.scheduler.processes:
                 
+                if pid in self.scheduler.cpus_active:
+                    has_cpu[pid] = 1
+
+                if self.scheduler.processes[pid].waiting_for_io:
+                    waiting_for_io[pid] = 1
+
+
                 for job_time in self.scheduler.job_times.keys():
                     if pid in self.scheduler.job_times[job_time]:
                         unstarve_time[pid] = (job_time/(0.5 * _TIME_TO_UNSTARVE_MS)) - 1 
@@ -125,7 +134,9 @@ class YosEnvPriority(gym.Env):
 
         observation = {
             "unstarve_time": unstarve_time,
-            "starvation_level": starvation_level
+            "starvation_level": starvation_level,
+            "has_cpu": has_cpu,
+            "waiting_for_io": waiting_for_io
         }
 
 
@@ -141,7 +152,7 @@ class YosEnvPriority(gym.Env):
 
     def calc_reward(self, terminated):
         episode_score = self.game_scene._score_manager.score
-        reward = self.scheduler.calc_reward()
+        reward = self.scheduler.get_reward()
         return reward
 
 

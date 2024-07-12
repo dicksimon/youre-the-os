@@ -3,7 +3,7 @@ from lib.constants import MAX_CPU_COUNT
 
 class AiSchedulePriority(scheduler_base.SchedulerBase):
 
-    def __init__(self, strategy):
+    def __init__(self,strategy):
         self.latest_cpu_owner = []
         self.cpu_owner = []
         self.schedule_reward = 0
@@ -21,18 +21,26 @@ class AiSchedulePriority(scheduler_base.SchedulerBase):
                 handler(event)
         
 
+
     def on_PROC_STARV(self, pid, starvation_level):
         if pid in self.cpu_owner and starvation_level == 0:
             self.proc_satisfied_count += 1
+        if pid in self.cpu_owner and not self.processes[pid].has_ended:
+            self.cpu_owner.remove(pid)
 
     def on_PROC_TERM(self, pid):
         self.proc_term_count
+        if pid in self.cpu_owner:
+            self.cpu_owner.remove(pid)
 
     def on_PROC_END(self, pid):
         self.proc_end_count += 1
 
     def on_PROC_KILL(self, pid):
         self.proc_kill_count += 1
+        if pid in self.cpu_owner:
+            self.cpu_owner.remove(pid)
+
 
 
 
